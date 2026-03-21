@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}Категории{% endblock %}
+{% block content %}
+<div style="display:flex;gap:0;min-height:calc(100vh - var(--nav-h));">
+    <div class="admin-sidebar" style="width:240px;flex-shrink:0;">
+        <div style="padding:16px 20px;font-family:var(--font-display);font-size:18px;letter-spacing:2px;color:var(--accent);border-bottom:1px solid var(--border);margin-bottom:8px;">⚙ УПРАВЛЕНИЕ</div>
+        <nav>
+            <a href="{{ url_for('admin.dashboard') }}" class="admin-nav-item">📊 Дашборд</a>
+            <a href="{{ url_for('admin.users') }}" class="admin-nav-item">👥 Пользователи</a>
+            <a href="{{ url_for('admin.videos') }}" class="admin-nav-item">🎬 Видео</a>
+            <a href="{{ url_for('admin.categories') }}" class="admin-nav-item active">📁 Категории</a>
+            <a href="{{ url_for('admin.reports') }}" class="admin-nav-item">⚠ Жалобы</a>
+            <div style="height:1px;background:var(--border);margin:12px 16px;"></div>
+            <a href="{{ url_for('main.index') }}" class="admin-nav-item">🏠 На сайт</a>
+        </nav>
+    </div>
+    <div style="flex:1;padding:32px;">
+        <h1 class="admin-title">Категории</h1>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:32px;">
+            <div>
+                <h3 style="font-size:16px;font-weight:700;margin-bottom:16px;">Создать категорию</h3>
+                <form method="POST" style="display:flex;flex-direction:column;gap:14px;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="action" value="create">
+                    <div class="form-group">
+                        <label class="form-label">Название</label>
+                        <input type="text" class="form-input" name="name" placeholder="Название категории" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Иконка (эмодзи)</label>
+                        <input type="text" class="form-input" name="icon" placeholder="🎬" maxlength="5">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Описание</label>
+                        <textarea class="form-textarea" name="description" rows="3" placeholder="Описание категории…"></textarea>
+                    </div>
+                    <button type="submit" class="btn-primary">Создать</button>
+                </form>
+            </div>
+            <div>
+                <h3 style="font-size:16px;font-weight:700;margin-bottom:16px;">Существующие ({{ categories|length }})</h3>
+                <div style="display:flex;flex-direction:column;gap:8px;">
+                {% for cat in categories %}
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--bg-1);border:1px solid var(--border);border-radius:var(--radius-sm);">
+                    <div>
+                        <span style="font-size:20px;margin-right:10px;">{{ cat.icon }}</span>
+                        <strong style="font-size:14px;">{{ cat.name }}</strong>
+                        <span style="font-size:12px;color:var(--text-3);margin-left:8px;">{{ cat.video_count() }} видео</span>
+                    </div>
+                    <form method="POST" style="display:inline;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="action" value="delete">
+                        <input type="hidden" name="category_id" value="{{ cat.id }}">
+                        <button type="submit" onclick="return confirm('Удалить категорию?')" style="color:var(--accent);font-size:13px;padding:4px 10px;" class="btn-secondary">🗑</button>
+                    </form>
+                </div>
+                {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

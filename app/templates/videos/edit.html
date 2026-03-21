@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}Редактировать — {{ video.title }}{% endblock %}
+{% block content %}
+<div style="max-width:800px;margin:0 auto;">
+    <a href="{{ url_for('videos.watch', slug=video.slug) }}" style="color:var(--text-2);font-size:13px;display:inline-flex;align-items:center;gap:6px;margin-bottom:20px;">← Вернуться к видео</a>
+    <h1 style="font-family:var(--font-display);font-size:36px;letter-spacing:3px;margin-bottom:28px;">Редактировать <span style="color:var(--accent)">Видео</span></h1>
+    <div style="display:grid;grid-template-columns:1fr 260px;gap:24px;">
+        <form method="POST" enctype="multipart/form-data" class="upload-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="form-group">
+                <label class="form-label">Название *</label>
+                <input type="text" class="form-input" name="title" value="{{ video.title }}" required maxlength="200">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Описание</label>
+                <textarea class="form-textarea" name="description" rows="6">{{ video.description or '' }}</textarea>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Категория</label>
+                    <select class="form-select" name="category_id">
+                        <option value="">— Без категории —</option>
+                        {% for cat in categories %}<option value="{{ cat.id }}" {{ 'selected' if video.category_id == cat.id }}>{{ cat.icon }} {{ cat.name }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Видимость</label>
+                    <select class="form-select" name="visibility">
+                        <option value="public" {{ 'selected' if video.visibility == 'public' }}>🌍 Публичное</option>
+                        <option value="unlisted" {{ 'selected' if video.visibility == 'unlisted' }}>🔗 По ссылке</option>
+                        <option value="private" {{ 'selected' if video.visibility == 'private' }}>🔒 Приватное</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Теги</label>
+                <input type="text" class="form-input" name="tags" value="{{ video.get_tags_str() }}" placeholder="тег1, тег2">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Заменить миниатюру</label>
+                <div style="display:flex;align-items:center;gap:16px;">
+                    <div id="thumbPreview" style="width:160px;height:90px;border-radius:var(--radius-sm);overflow:hidden;border:1px solid var(--border);background:var(--bg-3);">
+                        {% if video.thumbnail %}<img src="{{ url_for('videos.serve_thumbnail', filename=video.thumbnail) }}" style="width:100%;height:100%;object-fit:cover;">{% else %}<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-3);">🖼</div>{% endif %}
+                    </div>
+                    <div>
+                        <input type="file" name="thumbnail" id="thumbFile" accept="image/*" style="display:none;">
+                        <button type="button" class="btn-secondary" onclick="document.getElementById('thumbFile').click()">Загрузить новую</button>
+                    </div>
+                </div>
+            </div>
+            <div class="form-actions">
+                <a href="{{ url_for('videos.watch', slug=video.slug) }}" class="btn-secondary">Отмена</a>
+                <button type="submit" class="btn-primary">💾 Сохранить</button>
+            </div>
+        </form>
+        <div>
+            <div style="background:var(--bg-1);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:16px;">
+                <div style="font-size:12px;font-weight:700;color:var(--text-2);margin-bottom:12px;">ИНФОРМАЦИЯ</div>
+                <div style="font-size:13px;display:flex;flex-direction:column;gap:8px;">
+                    <div style="display:flex;justify-content:space-between;"><span style="color:var(--text-2)">Длина</span><span>{{ video.duration_str() }}</span></div>
+                    <div style="display:flex;justify-content:space-between;"><span style="color:var(--text-2)">Размер</span><span>{{ video.file_size_str() }}</span></div>
+                    <div style="display:flex;justify-content:space-between;"><span style="color:var(--text-2)">Разрешение</span><span>{{ video.resolution or '—' }}</span></div>
+                    <div style="display:flex;justify-content:space-between;"><span style="color:var(--text-2)">Просмотры</span><span>{{ video.views | format_views }}</span></div>
+                    <div style="display:flex;justify-content:space-between;"><span style="color:var(--text-2)">Статус</span><span class="badge {{ 'badge-success' if video.status=='published' else 'badge-warning' }}">{{ video.status }}</span></div>
+                </div>
+            </div>
+            <div style="background:rgba(232,70,70,0.05);border:1px solid rgba(232,70,70,0.2);border-radius:var(--radius);padding:20px;">
+                <div style="font-size:12px;font-weight:700;color:var(--accent);margin-bottom:8px;">УДАЛИТЬ</div>
+                <p style="font-size:12px;color:var(--text-2);margin-bottom:12px;">Действие необратимо.</p>
+                <form method="POST" action="{{ url_for('videos.delete', video_id=video.id) }}" onsubmit="return confirm('Удалить видео навсегда?')">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn-secondary" style="width:100%;color:var(--accent);border-color:var(--accent);">🗑 Удалить видео</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+document.getElementById('thumbFile').addEventListener('change', function() {
+    if (this.files[0]) {
+        const reader = new FileReader();
+        reader.onload = e => { document.getElementById('thumbPreview').innerHTML = `<img src="${e.target.result}" style="width:100%;height:100%;object-fit:cover;">`; };
+        reader.readAsDataURL(this.files[0]);
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+{% block title %}Панель трансляции — {{ stream.title }}{% endblock %}
+
+{% block content %}
+<div style="max-width:900px;margin:0 auto;">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:28px;flex-wrap:wrap;gap:12px;">
+    <div>
+      <h1 style="font-family:var(--font-display);font-size:34px;letter-spacing:2px;">
+        🎛 Панель <span style="color:var(--accent)">Трансляции</span>
+      </h1>
+      <div style="font-size:14px;color:var(--text-2);margin-top:4px;">{{ stream.title }}</div>
+    </div>
+    <div style="display:flex;gap:10px;">
+      <a href="{{ url_for('streams.watch', stream_id=stream.id) }}" class="btn-secondary"
+         target="_blank">👁 Смотреть</a>
+      <a href="{{ url_for('streams.go_live') }}" class="btn-secondary">⚙ Настройки</a>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:28px;">
+    <!-- Status card -->
+    <div style="background:var(--bg-1);border:1px solid var(--border);border-radius:var(--radius);padding:20px;">
+      <div style="font-size:12px;color:var(--text-3);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;">Статус</div>
+      <div id="streamStatus" style="font-family:var(--font-display);font-size:32px;letter-spacing:2px;
+           color:{{ 'var(--accent)' if stream.is_live() else 'var(--text-2)' }}">
+        {{ '🔴 В ЭФИРЕ' if stream.is_live() else '⚫ ОФЛАЙН' }}
+      </div>
+      <div style="font-size:13px;color:var(--text-2);margin-top:6px;" id="streamTime">
+        {% if stream.is_live() and stream.started_at %}
+        Начался {{ stream.started_at | timeago }}
+        {% elif stream.status == 'ended' %}
+        Завершён {{ stream.ended_at | timeago }}
+        {% else %}
+        Ожидание запуска
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Viewers card -->
+    <div style="background:var(--bg-1);border:1px solid var(--border);border-radius:var(--radius);padding:20px;">
+      <div style="font-size:12px;color:var(--text-3);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;">Зрители</div>
+      <div id="viewerCount" style="font-family:var(--font-display);font-size:40px;letter-spacing:2px;color:var(--blue);">
+        {{ stream.viewer_count }}
+      </div>
+      <div style="font-size:13px;color:var(--text-2);margin-top:6px;">
+        Пик: <strong id="peakViewers">{{ stream.peak_viewers }}</strong>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stream key -->
+  <div style="background:var(--bg-1);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:20px;">
+    <div style="font-size:13px;font-weight:700;margin-bottom:12px;">🔑 Ключ потока (Stream Key)</div>
+    <div style="display:flex;gap:10px;align-items:center;">
+      <div style="flex:1;background:var(--bg-0);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 14px;font-family:var(--font-mono);font-size:13px;color:var(--green);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+        <span id="streamKey" data-real="{{ stream.stream_key }}">••••••••••••••••••••••••</span>
+      </div>
+      <button onclick="toggleKey()" class="btn-secondary" style="flex-shrink:0;">👁 Показать</button>
+      <button onclick="copyKey()" class="btn-secondary" style="flex-shrink:0;">📋 Копировать</button>
+      <button onclick="regenKey()" class="btn-secondary" style="flex-shrink:0;color:var(--accent);">🔄</button>
+    </div>
+    <div style="margin-top:12px;font-size:12px;color:var(--text-3);">
+      RTMP URL: <code style="color:var(--green);">{{ rtmp_url }}</code>
+    </div>
+  </div>
+
+  <!-- Controls -->
+  <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:28px;">
+    {% if not stream.is_live() and stream.status != 'ended' %}
+    <button onclick="startStream()" class="btn-primary" style="padding:12px 28px;font-size:15px;display:flex;align-items:center;gap:10px;">
+      <span style="width:10px;height:10px;background:#fff;border-radius:50%;"></span>
+      Начать трансляцию
+    </button>
+    {% elif stream.is_live() %}
+    <button onclick="endStream()" class="btn-secondary" style="padding:12px 28px;font-size:15px;color:var(--accent);border-color:var(--accent);">
+      ⏹ Завершить трансляцию
+    </button>
+    {% else %}
+    <div style="padding:12px 20px;background:var(--bg-2);border-radius:var(--radius-sm);font-size:14px;color:var(--text-2);">
+      ✅ Трансляция завершена
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Preview (browser-based simulation) -->
+  <div style="background:var(--bg-1);border:1px solid var(--border);border-radius:var(--radius);padding:20px;">
+    <div style="font-size:13px;font-weight:700;margin-bottom:12px;">📺 Симуляция плеера (dev режим)</div>
+    <div style="aspect-ratio:16/9;background:#000;border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;" id="previewBox">
+      <div id="offlineMsg" style="text-align:center;color:var(--text-3);">
+        <div style="font-size:48px;margin-bottom:12px;">📡</div>
+        <div>Трансляция не активна</div>
+      </div>
+      <div id="liveMsg" style="display:none;text-align:center;color:white;">
+        <div style="font-size:48px;margin-bottom:12px;animation:pulse 1.5s ease-in-out infinite;">🔴</div>
+        <div style="font-size:20px;font-weight:700;">Эфир идёт</div>
+        <div style="font-size:14px;color:rgba(255,255,255,.6);margin-top:8px;">{{ stream.title }}</div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const STREAM_ID = {{ stream.id }};
+let keyVisible = false;
+
+function toggleKey() {
+  const el = document.getElementById('streamKey');
+  keyVisible = !keyVisible;
+  el.textContent = keyVisible ? el.dataset.real : '••••••••••••••••••••••••';
+}
+
+function copyKey() {
+  const key = document.getElementById('streamKey').dataset.real;
+  navigator.clipboard.writeText(key).then(() => showToast('Ключ скопирован!'));
+}
+
+async function regenKey() {
+  if (!confirm('Сгенерировать новый ключ? Старый перестанет работать.')) return;
+  const data = await apiCall(`/live/${STREAM_ID}/regenerate-key`, 'POST');
+  if (data.stream_key) {
+    document.getElementById('streamKey').dataset.real = data.stream_key;
+    document.getElementById('streamKey').textContent = '••••••••••••••••••••••••';
+    keyVisible = false;
+    showToast('Новый ключ сгенерирован!');
+  }
+}
+
+async function startStream() {
+  const data = await apiCall(`/live/${STREAM_ID}/start`, 'POST');
+  if (data.status === 'live') {
+    document.getElementById('streamStatus').textContent = '🔴 В ЭФИРЕ';
+    document.getElementById('streamStatus').style.color = 'var(--accent)';
+    document.getElementById('offlineMsg').style.display = 'none';
+    document.getElementById('liveMsg').style.display = 'block';
+    showToast('Трансляция началась!');
+  } else {
+    showToast(data.error || 'Ошибка', 'error');
+  }
+}
+
+async function endStream() {
+  if (!confirm('Завершить трансляцию?')) return;
+  const data = await apiCall(`/live/${STREAM_ID}/end`, 'POST');
+  if (data.status === 'ended') {
+    document.getElementById('streamStatus').textContent = '✅ ЗАВЕРШЕНА';
+    document.getElementById('streamStatus').style.color = 'var(--green)';
+    document.getElementById('liveMsg').style.display = 'none';
+    document.getElementById('offlineMsg').style.display = 'block';
+    showToast('Трансляция завершена.');
+  }
+}
+
+// Poll viewer count every 15s when live
+{% if stream.is_live() %}
+setInterval(async () => {
+  try {
+    const r = await fetch(`/live/{{ stream.id }}/viewers`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
+      body: JSON.stringify({ delta: 0 })
+    });
+    const d = await r.json();
+    document.getElementById('viewerCount').textContent = d.viewer_count;
+  } catch {}
+}, 15000);
+
+document.getElementById('offlineMsg').style.display = 'none';
+document.getElementById('liveMsg').style.display = 'block';
+{% endif %}
+
+function getCsrfToken() {
+  const m = document.querySelector('meta[name="csrf-token"]');
+  return m ? m.content : document.cookie.split(';').find(c=>c.trim().startsWith('csrf_token='))?.split('=')[1] || '';
+}
+</script>
+{% endblock %}

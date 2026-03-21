@@ -1,0 +1,290 @@
+{% extends "base.html" %}
+
+{% block title %}{{ video.title }}{% endblock %}
+{% block meta_description %}{{ video.description | truncate(160) }}{% endblock %}
+
+{% block content %}
+<div class="watch-layout">
+    <!-- Main Column -->
+    <div class="watch-main">
+        
+        <!-- Video Player -->
+        <div class="video-player-wrap">
+            {% if video.status == 'published' %}
+            <video class="video-player" 
+                   controls 
+                   preload="metadata"
+                   poster="{{ url_for('videos.serve_thumbnail', filename=video.thumbnail) if video.thumbnail else '' }}"
+                   id="mainPlayer">
+                {% if video.has_1080p %}
+                <source src="{{ url_for('static', filename='uploads/videos/' + video.id|string + '_1080p.mp4') }}" 
+                        type="video/mp4" label="1080p">
+                {% endif %}
+                {% if video.has_720p %}
+                <source src="{{ url_for('static', filename='uploads/videos/' + video.id|string + '_720p.mp4') }}" 
+                        type="video/mp4" label="720p">
+                {% endif %}
+                {% if video.has_360p %}
+                <source src="{{ url_for('static', filename='uploads/videos/' + video.id|string + '_360p.mp4') }}" 
+                        type="video/mp4" label="360p">
+                {% endif %}
+                <source src="{{ url_for('videos.serve_video', filename=video.filename) }}" type="video/mp4">
+                Ваш браузер не поддерживает воспроизведение видео.
+            </video>
+            {% else %}
+            <div style="display:flex;align-items:center;justify-content:center;height:100%;background:var(--bg-2);aspect-ratio:16/9;border-radius:var(--radius);">
+                <div style="text-align:center;color:var(--text-2);">
+                    <div style="font-size:48px;margin-bottom:16px;">⏳</div>
+                    <div style="font-size:16px;">Видео обрабатывается…</div>
+                    <div style="font-size:13px;margin-top:8px;color:var(--text-3);">Обновите страницу через несколько минут</div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Video Info -->
+        <div class="video-info-section">
+            <h1 class="video-title-main">{{ video.title }}</h1>
+            
+            <!-- Actions Row -->
+            <div class="video-actions">
+                <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-2);">
+                    <span>{{ video.views | format_views }} просмотров</span>
+                    <span>&bull;</span>
+                    <span>{{ video.published_at | timeago if video.published_at }}</span>
+                    {% if video.category %}
+                    <span>&bull;</span>
+                    <a href="{{ url_for('main.index', category=video.category.slug) }}" 
+                       style="color:var(--accent)">{{ video.category.icon }} {{ video.category.name }}</a>
+                    {% endif %}
+                </div>
+                
+                <div style="display:flex;align-items:center;gap:10px;margin-left:auto;flex-wrap:wrap;">
+                    <!-- Like / Dislike -->
+                    {% if current_user.is_authenticated %}
+                    <div class="action-group">
+                        <button class="action-btn {{ 'liked' if user_like == true else '' }}" 
+                                data-action="like"
+                                onclick="handleLike({{ video.id }}, true, this)">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg>
+                            <span class="count">{{ video.like_count() | format_views }}</span>
+                        </button>
+                        <div class="action-divider"></div>
+                        <button class="action-btn {{ 'disliked' if user_like == false else '' }}" 
+                                data-action="dislike"
+                                onclick="handleLike({{ video.id }}, false, this)">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17"/></svg>
+                            <span class="count">{{ video.dislike_count() | format_views }}</span>
+                        </button>
+                    </div>
+                    {% else %}
+                    <a href="{{ url_for('auth.login') }}" class="action-group" style="text-decoration:none;">
+                        <span class="action-btn">
+                            👍 <span>{{ video.like_count() | format_views }}</span>
+                        </span>
+                    </a>
+                    {% endif %}
+                    
+                    <button class="action-btn-sm" onclick="copyShareLink()">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+                        Поделиться
+                    </button>
+                    
+                    {% if current_user.is_authenticated and current_user.id == video.user_id %}
+                    <a href="{{ url_for('videos.edit', video_id=video.id) }}" class="action-btn-sm">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                        Редактировать
+                    </a>
+                    {% endif %}
+                    
+                    {% if current_user.is_authenticated %}
+                    <button class="action-btn-sm" onclick="reportVideo({{ video.id }})">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+                        Пожаловаться
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Channel Row -->
+            <div class="channel-row">
+                <div class="channel-info">
+                    <a href="{{ url_for('users.profile', username=video.author.username) }}" class="channel-avatar">
+                        <img src="{{ url_for('static', filename='uploads/avatars/' + video.author.avatar) if video.author.avatar and video.author.avatar != 'default_avatar.png' else url_for('static', filename='img/default_avatar.png') }}"
+                             alt="{{ video.author.username }}"
+                             onerror="this.src='{{ url_for('static', filename='img/default_avatar.png') }}'">
+                    </a>
+                    <div>
+                        <a href="{{ url_for('users.profile', username=video.author.username) }}" class="channel-name">
+                            {{ video.author.display_name or video.author.username }}
+                        </a>
+                        <div class="channel-subs">{{ video.author.subscriber_count() | format_views }} подписчиков</div>
+                    </div>
+                </div>
+                
+                {% if current_user.is_authenticated and current_user.id != video.user_id %}
+                <button class="btn-subscribe {{ 'subscribed' if is_subscribed else '' }}" 
+                        id="subscribeBtn"
+                        onclick="handleSubscribe({{ video.author.id }}, this)">
+                    {{ 'Отписаться' if is_subscribed else 'Подписаться' }}
+                </button>
+                {% elif not current_user.is_authenticated %}
+                <a href="{{ url_for('auth.login') }}" class="btn-subscribe">Подписаться</a>
+                {% endif %}
+            </div>
+
+            <!-- Description -->
+            {% if video.description %}
+            <div class="video-description collapsed" id="videoDesc" onclick="toggleDescription(document.querySelector('.desc-toggle'))">
+                {{ video.description | nl2br | safe }}
+                <br>
+                <div style="font-size:12px;color:var(--text-3);margin-top:8px;">
+                    {% if video.resolution %}<span>{{ video.resolution }}</span>{% endif %}
+                    {% if video.format %}<span> &bull; {{ video.format }}</span>{% endif %}
+                    {% if video.file_size %}<span> &bull; {{ video.file_size_str() }}</span>{% endif %}
+                </div>
+            </div>
+            <button class="desc-toggle" onclick="toggleDescription(this)">Показать больше</button>
+            {% endif %}
+
+            <!-- Tags -->
+            {% if video.tags %}
+            <div class="video-tags" style="margin-top:16px;">
+                {% for tag in video.tags %}
+                <a href="{{ url_for('main.tag', slug=tag.slug) }}" class="tag-pill">#{{ tag.name }}</a>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- Comments Section -->
+            <div class="comments-section">
+                <div class="comments-title">
+                    💬 Комментарии <span style="color:var(--text-2);font-weight:400;">{{ video.comment_count() }}</span>
+                </div>
+                
+                {% if current_user.is_authenticated %}
+                <div class="comment-form">
+                    <div class="comment-avatar">
+                        <img src="{{ url_for('static', filename='uploads/avatars/' + current_user.avatar) if current_user.avatar and current_user.avatar != 'default_avatar.png' else url_for('static', filename='img/default_avatar.png') }}"
+                             alt="{{ current_user.username }}"
+                             onerror="this.src='{{ url_for('static', filename='img/default_avatar.png') }}'">
+                    </div>
+                    <div class="comment-input-wrap" id="commentForm">
+                        <textarea class="comment-input" id="commentInput" 
+                                  placeholder="Оставьте комментарий… (Ctrl+Enter для отправки)"
+                                  rows="1"></textarea>
+                        <div class="comment-actions">
+                            <button class="btn-secondary" style="padding:7px 16px;font-size:13px;" 
+                                    onclick="document.getElementById('commentInput').value=''">Отмена</button>
+                            <button class="btn-primary comment-submit" style="padding:7px 16px;font-size:13px;">Отправить</button>
+                        </div>
+                    </div>
+                </div>
+                {% else %}
+                <div style="padding:20px;background:var(--bg-2);border-radius:var(--radius);margin-bottom:24px;text-align:center;font-size:14px;color:var(--text-2);">
+                    <a href="{{ url_for('auth.login') }}" style="color:var(--accent);">Войдите</a>, чтобы оставить комментарий
+                </div>
+                {% endif %}
+                
+                <!-- Comments List -->
+                <div id="commentsList">
+                    {% for comment in comments %}
+                    <div class="comment-item" data-id="{{ comment.id }}">
+                        <div class="comment-avatar">
+                            <img src="{{ url_for('static', filename='uploads/avatars/' + comment.author.avatar) if comment.author.avatar and comment.author.avatar != 'default_avatar.png' else url_for('static', filename='img/default_avatar.png') }}"
+                                 alt="{{ comment.author.username }}"
+                                 onerror="this.src='{{ url_for('static', filename='img/default_avatar.png') }}'">
+                        </div>
+                        <div class="comment-body">
+                            <div class="comment-header">
+                                <a href="{{ url_for('users.profile', username=comment.author.username) }}" 
+                                   class="comment-username">{{ comment.author.display_name or comment.author.username }}</a>
+                                <span class="comment-time">{{ comment.created_at | timeago }}</span>
+                                {% if comment.is_pinned %}
+                                <span style="font-size:11px;color:var(--gold);">📌 Закреплён</span>
+                                {% endif %}
+                            </div>
+                            <div class="comment-content">{{ comment.content }}</div>
+                            <div class="comment-footer">
+                                {% if current_user.is_authenticated and (current_user.id == comment.user_id or current_user.is_moderator) %}
+                                <button class="comment-btn" onclick="deleteComment({{ comment.id }}, this)">🗑 Удалить</button>
+                                {% endif %}
+                            </div>
+                            
+                            <!-- Replies -->
+                            {% if comment.replies.count() > 0 %}
+                            <div class="comment-replies" style="margin-top:12px;">
+                                {% for reply in comment.replies.filter_by(is_hidden=False).limit(5).all() %}
+                                <div class="comment-item" data-id="{{ reply.id }}" style="margin-bottom:12px;">
+                                    <div class="comment-avatar" style="width:28px;height:28px;">
+                                        <img src="{{ url_for('static', filename='uploads/avatars/' + reply.author.avatar) if reply.author.avatar and reply.author.avatar != 'default_avatar.png' else url_for('static', filename='img/default_avatar.png') }}"
+                                             alt="{{ reply.author.username }}"
+                                             onerror="this.src='{{ url_for('static', filename='img/default_avatar.png') }}'">
+                                    </div>
+                                    <div class="comment-body">
+                                        <div class="comment-header">
+                                            <a href="{{ url_for('users.profile', username=reply.author.username) }}" 
+                                               class="comment-username">{{ reply.author.display_name or reply.author.username }}</a>
+                                            <span class="comment-time">{{ reply.created_at | timeago }}</span>
+                                        </div>
+                                        <div class="comment-content">{{ reply.content }}</div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="empty-state" style="padding:40px 0;">
+                        <div style="font-size:32px;margin-bottom:8px;">💬</div>
+                        <div>Комментариев пока нет. Будьте первым!</div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sidebar: Related Videos -->
+    <div class="watch-sidebar">
+        <div style="font-size:15px;font-weight:700;margin-bottom:16px;">Похожие видео</div>
+        {% if related %}
+        <div class="related-list">
+            {% for rv in related %}
+            <a href="{{ url_for('videos.watch', slug=rv.slug) }}" class="related-card">
+                <div class="related-thumb-wrap">
+                    {% if rv.thumbnail %}
+                    <img src="{{ url_for('videos.serve_thumbnail', filename=rv.thumbnail) }}" 
+                         alt="{{ rv.title }}" class="related-thumb" loading="lazy">
+                    {% else %}
+                    <div style="background:var(--bg-3);width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--text-3);">▶</div>
+                    {% endif %}
+                    <span class="related-duration">{{ rv.duration_str() }}</span>
+                </div>
+                <div class="related-info">
+                    <div class="related-title">{{ rv.title }}</div>
+                    <div class="related-meta">{{ rv.author.display_name or rv.author.username }}</div>
+                    <div class="related-meta">{{ rv.views | format_views }} просмотров</div>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div style="color:var(--text-2);font-size:14px;">Нет похожих видео</div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+initComments({{ video.id }});
+
+function copyShareLink() {
+    navigator.clipboard.writeText(window.location.href)
+        .then(() => showToast('Ссылка скопирована!'))
+        .catch(() => showToast('Не удалось скопировать.', 'error'));
+}
+</script>
+{% endblock %}

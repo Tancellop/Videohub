@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}В тренде{% endblock %}
+{% block content %}
+<div class="section-header"><h1 class="section-title">В <span>Тренде</span></h1><span class="section-link">за 7 дней</span></div>
+{% if videos %}
+<div class="video-grid">{% for video in videos %}{% include 'partials/video_card.html' %}{% endfor %}</div>
+{% else %}
+<div class="empty-state"><div class="empty-icon">📈</div><div class="empty-title">Нет трендовых видео</div></div>
+{% endif %}
+{% endblock %}

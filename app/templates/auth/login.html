@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}Войти{% endblock %}
+{% block body_class %}auth-body{% endblock %}
+
+{% block content %}
+<div class="auth-page">
+    <div class="auth-card">
+        <div class="auth-logo">
+            <div class="auth-logo-text">▶ VideoHub</div>
+        </div>
+        <h2 class="auth-title">С возвращением!</h2>
+        <p class="auth-subtitle">Войдите в свой аккаунт</p>
+
+        <form method="POST" class="auth-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            
+            <div class="form-group">
+                <label class="form-label">Логин или Email</label>
+                <div class="form-input-icon">
+                    <svg class="input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 1 0-16 0"/></svg>
+                    <input type="text" class="form-input" name="login" 
+                           placeholder="username или email@example.com"
+                           value="{{ request.form.get('login', '') }}"
+                           required autocomplete="username">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Пароль</label>
+                <div class="form-input-icon" style="position:relative;">
+                    <svg class="input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    <input type="password" class="form-input" name="password" 
+                           placeholder="Ваш пароль"
+                           id="passwordInput"
+                           required autocomplete="current-password">
+                    <button type="button" class="password-toggle" onclick="togglePassword('passwordInput', this)">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                    </button>
+                </div>
+            </div>
+
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-top:-4px;">
+                <label class="form-checkbox">
+                    <input type="checkbox" name="remember" {{ 'checked' if request.form.get('remember') }}>
+                    Запомнить меня
+                </label>
+                <a href="{{ url_for('auth.forgot_password') }}" style="font-size:13px;color:var(--accent);">Забыли пароль?</a>
+            </div>
+
+            <button type="submit" class="auth-btn">Войти</button>
+        </form>
+
+        <div class="auth-footer">
+            Нет аккаунта? <a href="{{ url_for('auth.register') }}">Зарегистрироваться</a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function togglePassword(id, btn) {
+    const input = document.getElementById(id);
+    input.type = input.type === 'password' ? 'text' : 'password';
+}
+</script>
+{% endblock %}
