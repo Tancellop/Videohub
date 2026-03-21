@@ -60,28 +60,14 @@ def register():
             username=username,
             email=email,
             display_name=username,
-            is_verified=False
+            is_verified=True
         )
         user.set_password(password)
-        token = user.generate_verification_token()
         
         db.session.add(user)
         db.session.commit()
         
-        # Send verification email
-        try:
-            send_verification_email(user, token)
-            flash('Регистрация успешна! Проверьте email для подтверждения аккаунта.', 'success')
-        except Exception as e:
-            current_app.logger.error(f'Email error: {e}')
-            # Auto-verify in dev mode
-            if current_app.debug:
-                user.is_verified = True
-                db.session.commit()
-                flash('Регистрация успешна! (Email не отправлен — dev режим)', 'success')
-            else:
-                flash('Регистрация успешна! Письмо с подтверждением будет отправлено.', 'success')
-        
+        flash('Регистрация успешна! Теперь вы можете войти.', 'success')
         return redirect(url_for('auth.login'))
     
     return render_template('auth/register.html')
@@ -107,10 +93,6 @@ def login():
         if user and user.check_password(password):
             if user.is_banned:
                 flash(f'Ваш аккаунт заблокирован. Причина: {user.ban_reason}', 'error')
-                return render_template('auth/login.html')
-            
-            if not user.is_verified:
-                flash('Пожалуйста, подтвердите ваш email для входа.', 'warning')
                 return render_template('auth/login.html')
             
             login_user(user, remember=remember)
