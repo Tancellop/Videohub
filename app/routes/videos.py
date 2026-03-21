@@ -244,12 +244,14 @@ def like_video(video_id):
 @limiter.limit("30 per hour")
 def add_comment(video_id):
     video = Video.query.get_or_404(video_id)
-    content = bleach.clean(request.json.get('content', '').strip(), tags=[], strip=True)
-    parent_id = request.json.get('parent_id')
-    
+
+    body = request.get_json(silent=True) or {}
+    content = bleach.clean(body.get('content', '').strip(), tags=[], strip=True)
+    parent_id = body.get('parent_id')
+
     if not content or len(content) > 2000:
         return jsonify({'error': 'Комментарий должен быть от 1 до 2000 символов.'}), 400
-    
+
     comment = Comment(
         content=content,
         user_id=current_user.id,
@@ -257,26 +259,26 @@ def add_comment(video_id):
         parent_id=parent_id
     )
     db.session.add(comment)
-    
+
     # Notify video owner
     if video.user_id != current_user.id:
         notif = Notification(
             user_id=video.user_id,
             actor_id=current_user.id,
             type='comment',
-            message=f'{current_user.display_name} прокомментировал ваше видео "{video.title}"',
+            message=f'{current_user.display_name or current_user.username} прокомментировал ваше видео "{video.title}"',
             url=url_for('videos.watch', slug=video.slug)
         )
         db.session.add(notif)
-    
+
     db.session.commit()
-    
+
     return jsonify({
         'id': comment.id,
         'content': comment.content,
-        'author': comment.author.display_name,
+        'author': comment.author.display_name or comment.author.username,
         'author_username': comment.author.username,
-        'avatar': comment.author.avatar,
+        'avatar': comment.author.avatar or 'default_avatar.png',
         'created_at': comment.created_at.isoformat(),
         'parent_id': comment.parent_id
     })

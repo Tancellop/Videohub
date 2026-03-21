@@ -212,7 +212,16 @@ window.apiCall = async function(url, method = 'GET', data = null) {
   };
   if (data) opts.body = JSON.stringify(data);
   const res = await fetch(url, opts);
-  return res.json();
+  if (!res.ok && res.status !== 400) {
+    // Non-JSON error response (e.g. 500 HTML page)
+    throw new Error(`HTTP ${res.status}`);
+  }
+  const text = await res.text();
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw new Error('Неверный ответ сервера');
+  }
 };
 
 function getCsrfToken() {
@@ -275,11 +284,11 @@ window.initComments = function(videoId) {
 
   const submitBtn = form.querySelector('.comment-submit');
   if (submitBtn) {
-    submitBtn.addEventListener('click', submitComment);
+    submitBtn.addEventListener('click', () => submitComment(null));
   }
   
   input.addEventListener('keydown', (e) => {
-    if (e.ctrlKey && e.key === 'Enter') submitComment();
+    if (e.ctrlKey && e.key === 'Enter') submitComment(null);
   });
   
   // Auto-expand textarea
@@ -291,7 +300,10 @@ window.initComments = function(videoId) {
   async function submitComment(parentId = null) {
     const content = input.value.trim();
     if (!content) return;
-    
+
+    const btn = form.querySelector('.comment-submit');
+    if (btn) { btn.disabled = true; btn.textContent = 'Отправка…'; }
+
     try {
       const data = await apiCall(`/videos/${videoId}/comment`, 'POST', { content, parent_id: parentId });
       if (data.id) {
@@ -302,8 +314,10 @@ window.initComments = function(videoId) {
       } else if (data.error) {
         showToast(data.error, 'error');
       }
-    } catch {
-      showToast('Ошибка. Попробуйте ещё раз.', 'error');
+    } catch(e) {
+      showToast('Ошибка отправки. Попробуйте ещё раз.', 'error');
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = 'Отправить'; }
     }
   }
   

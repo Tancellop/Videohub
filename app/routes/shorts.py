@@ -144,9 +144,11 @@ def like_short(short_id):
 @login_required
 @limiter.limit("30 per hour")
 def comment_short(short_id):
-    short   = Video.query.filter_by(id=short_id, is_short=True).first_or_404()
-    content = bleach.clean(request.json.get('content', '').strip(),
-                           tags=[], strip=True)
+    short = Video.query.filter_by(id=short_id, is_short=True).first_or_404()
+
+    body = request.get_json(silent=True) or {}
+    content = bleach.clean(body.get('content', '').strip(), tags=[], strip=True)
+
     if not content or len(content) > 500:
         return jsonify({'error': 'Комментарий 1–500 символов'}), 400
 
@@ -158,7 +160,7 @@ def comment_short(short_id):
         'id':         c.id,
         'content':    c.content,
         'author':     c.author.display_name or c.author.username,
-        'avatar':     c.author.avatar,
+        'avatar':     c.author.avatar or 'default_avatar.png',
         'created_at': c.created_at.isoformat()
     })
 

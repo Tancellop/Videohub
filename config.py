@@ -28,6 +28,7 @@ class Config:
     FFPROBE_PATH = 'ffprobe'
     THUMBNAIL_SIZE = (640, 360)
     WTF_CSRF_ENABLED = True
+    WTF_CSRF_TIME_LIMIT = None  # токен не истекает пока сессия активна
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = 'Lax'
     RATELIMIT_STORAGE_URL = 'memory://'
