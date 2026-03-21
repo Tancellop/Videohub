@@ -100,9 +100,6 @@ def api_login():
     if not user or not user.check_password(password):
         return jsonify({'error': 'Invalid credentials'}), 401
     
-    if not user.is_verified:
-        return jsonify({'error': 'Email not verified'}), 403
-    
     if user.is_banned:
         return jsonify({'error': 'Account banned'}), 403
     

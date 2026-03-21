@@ -89,6 +89,12 @@ def _migrate_columns():
                 conn.commit()
             except Exception:
                 pass
+        # Verify all existing users — email verification is disabled
+        try:
+            conn.execute(text('UPDATE users SET is_verified = 1 WHERE is_verified = 0'))
+            conn.commit()
+        except Exception:
+            pass
 
 
 def _create_default_data():

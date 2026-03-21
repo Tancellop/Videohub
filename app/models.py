@@ -26,7 +26,7 @@ class User(UserMixin, db.Model):
     avatar = db.Column(db.String(255), default='default_avatar.png')
     banner = db.Column(db.String(255))
     role = db.Column(db.String(20), default='user')
-    is_verified = db.Column(db.Boolean, default=False)
+    is_verified = db.Column(db.Boolean, default=True)
     is_active = db.Column(db.Boolean, default=True)
     is_banned = db.Column(db.Boolean, default=False)
     ban_reason = db.Column(db.String(255))

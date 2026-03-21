@@ -74,22 +74,14 @@
                     <td>
                         {% if user.is_banned %}
                         <span class="badge badge-danger">Заблокирован</span>
-                        {% elif user.is_verified %}
-                        <span class="badge badge-success">Активен</span>
                         {% else %}
-                        <span class="badge badge-warning">Не верифицирован</span>
+                        <span class="badge badge-success">Активен</span>
                         {% endif %}
                     </td>
                     <td style="font-size:13px;">{{ user.video_count() }}</td>
                     <td style="font-size:12px;color:var(--text-2);">{{ user.created_at | format_date }}</td>
                     <td>
                         <div style="display:flex;gap:6px;flex-wrap:wrap;">
-                            {% if not user.is_verified %}
-                            <button onclick="adminUserAction({{ user.id }}, 'verify')" 
-                                    class="btn-secondary" style="font-size:11px;padding:4px 10px;">
-                                ✓ Верифицировать
-                            </button>
-                            {% endif %}
                             {% if not user.is_banned %}
                             <button onclick="adminUserAction({{ user.id }}, 'ban')"
                                     class="btn-secondary" style="font-size:11px;padding:4px 10px;color:var(--accent);">
