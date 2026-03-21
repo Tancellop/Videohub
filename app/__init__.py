@@ -110,6 +110,7 @@ def _migrate_columns():
             conn.commit()
         except Exception:
             pass
+        # comment_likes table created by db.create_all()
 
 
 def _create_default_data():

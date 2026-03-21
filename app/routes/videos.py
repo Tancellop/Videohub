@@ -384,3 +384,79 @@ def serve_video(filename):
 @videos_bp.route('/thumbnail/<filename>')
 def serve_thumbnail(filename):
     return send_from_directory(current_app.config['THUMBNAIL_FOLDER'], filename)
+
+
+@videos_bp.route('/comment/<int:comment_id>/like', methods=['POST'])
+@login_required
+def like_comment(comment_id):
+    from app.models import CommentLike
+    comment = Comment.query.get_or_404(comment_id)
+    existing = CommentLike.query.filter_by(
+        user_id=current_user.id, comment_id=comment_id).first()
+    if existing:
+        db.session.delete(existing)
+        liked = False
+    else:
+        db.session.add(CommentLike(user_id=current_user.id, comment_id=comment_id))
+        liked = True
+    db.session.commit()
+    count = CommentLike.query.filter_by(comment_id=comment_id).count()
+    return jsonify({'liked': liked, 'count': count})
+
+
+@videos_bp.route('/<int:video_id>/comments')
+def get_comments(video_id):
+    """AJAX: load comments with sort + pagination"""
+    from app.models import CommentLike
+    video  = Video.query.get_or_404(video_id)
+    sort   = request.args.get('sort', 'top')
+    page   = request.args.get('page', 1, type=int)
+    query  = Comment.query.filter_by(video_id=video_id, parent_id=None, is_hidden=False)
+
+    if sort == 'new':
+        query = query.order_by(Comment.created_at.desc())
+    elif sort == 'old':
+        query = query.order_by(Comment.created_at.asc())
+    else:  # top
+        query = query.order_by(Comment.is_pinned.desc(), Comment.created_at.desc())
+
+    paginated = query.paginate(page=page, per_page=20, error_out=False)
+
+    liked_ids = set()
+    if current_user.is_authenticated:
+        cids = [c.id for c in paginated.items]
+        liked_ids = {cl.comment_id for cl in
+                     CommentLike.query.filter(
+                         CommentLike.user_id == current_user.id,
+                         CommentLike.comment_id.in_(cids)).all()}
+
+    def serialize(c, is_reply=False):
+        from app.models import CommentLike as CL
+        lc = CL.query.filter_by(comment_id=c.id).count()
+        replies_data = []
+        if not is_reply:
+            for r in c.replies.filter_by(is_hidden=False).order_by(Comment.created_at.asc()).limit(50).all():
+                replies_data.append(serialize(r, is_reply=True))
+        return {
+            'id':            c.id,
+            'content':       c.content,
+            'created_at':    c.created_at.isoformat(),
+            'author':        c.author.display_name or c.author.username,
+            'author_username': c.author.username,
+            'avatar':        c.author.avatar or 'default_avatar.png',
+            'is_pinned':     c.is_pinned,
+            'parent_id':     c.parent_id,
+            'like_count':    lc,
+            'liked':         c.id in liked_ids,
+            'can_delete':    current_user.is_authenticated and (
+                             current_user.id == c.user_id or current_user.is_moderator),
+            'replies':       replies_data,
+            'reply_count':   c.replies.filter_by(is_hidden=False).count() if not is_reply else 0,
+        }
+
+    return jsonify({
+        'comments': [serialize(c) for c in paginated.items],
+        'total':    paginated.total,
+        'pages':    paginated.pages,
+        'page':     page,
+    })
