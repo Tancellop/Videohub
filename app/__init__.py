@@ -72,6 +72,21 @@ def create_app(config_name=None):
     register_filters(app)
     from app.utils.context_processors import register_context_processors
     register_context_processors(app)
+
+    @app.before_request
+    def enforce_ban():
+        from flask_login import current_user, logout_user
+        from flask import session, redirect, url_for, flash
+        try:
+            if current_user.is_authenticated and current_user.is_banned:
+                reason = current_user.ban_reason or 'Нарушение правил'
+                logout_user()
+                session.clear()
+                flash(f'Ваш аккаунт заблокирован. Причина: {reason}', 'error')
+                return redirect(url_for('auth.login'))
+        except Exception:
+            pass
+
     return app
 
 

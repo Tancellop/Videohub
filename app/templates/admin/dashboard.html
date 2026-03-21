@@ -71,6 +71,21 @@
                 <div class="stat-change">всего</div>
             </div>
             <div class="stat-card">
+                <div class="stat-label">Shorts</div>
+                <div class="stat-value" style="color:var(--purple, #a855f7);">{{ total_shorts }}</div>
+                <div class="stat-change">всего</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Лайков</div>
+                <div class="stat-value" style="color:var(--pink, #ec4899);">{{ total_likes }}</div>
+                <div class="stat-change">всего</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">🚫 Заблокировано</div>
+                <div class="stat-value" style="color:{{ 'var(--accent)' if banned_users > 0 else 'var(--text-2)' }};">{{ banned_users }}</div>
+                <div class="stat-change {{ 'down' if banned_users > 0 else '' }}">пользователей</div>
+            </div>
+            <div class="stat-card">
                 <div class="stat-label">Жалоб</div>
                 <div class="stat-value" style="color:{{ 'var(--accent)' if pending_reports > 0 else 'var(--text-2)' }};">{{ pending_reports }}</div>
                 <div class="stat-change {{ 'down' if pending_reports > 0 else '' }}">ожидают</div>

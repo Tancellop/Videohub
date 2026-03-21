@@ -41,6 +41,9 @@ def get_or_create_tag(name):
 @login_required
 @limiter.limit("10 per hour")
 def upload():
+    if current_user.is_banned:
+        flash('Ваш аккаунт заблокирован. Загрузка видео недоступна.', 'error')
+        return redirect(url_for('main.index'))
     if request.method == 'POST':
         if 'video' not in request.files:
             flash('Видеофайл не выбран.', 'error')
