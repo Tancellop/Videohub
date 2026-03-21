@@ -16,36 +16,36 @@ subscriptions = db.Table('subscriptions',
 
 
 class User(UserMixin, db.Model):
-    __tablename__ = 'users'
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(50), unique=True, nullable=False, index=True)
-    email = db.Column(db.String(120), unique=True, nullable=False, index=True)
-    password_hash = db.Column(db.String(256))
-    display_name = db.Column(db.String(100))
-    bio = db.Column(db.Text, default='')
-    avatar = db.Column(db.String(255), default='default_avatar.png')
-    banner = db.Column(db.String(255))
-    role = db.Column(db.String(20), default='user')
-    is_verified = db.Column(db.Boolean, default=True)
-    is_active = db.Column(db.Boolean, default=True)
-    is_banned = db.Column(db.Boolean, default=False)
-    ban_reason = db.Column(db.String(255))
-    verification_token = db.Column(db.String(100))
-    reset_token = db.Column(db.String(100))
+    __tablename__       = 'users'
+    id                  = db.Column(db.Integer, primary_key=True)
+    username            = db.Column(db.String(50), unique=True, nullable=False, index=True)
+    email               = db.Column(db.String(120), unique=True, nullable=False, index=True)
+    password_hash       = db.Column(db.String(256))
+    display_name        = db.Column(db.String(100))
+    bio                 = db.Column(db.Text, default='')
+    avatar              = db.Column(db.String(255), default='default_avatar.png')
+    banner              = db.Column(db.String(255))
+    role                = db.Column(db.String(20), default='user')
+    is_verified         = db.Column(db.Boolean, default=True)
+    is_active           = db.Column(db.Boolean, default=True)
+    is_banned           = db.Column(db.Boolean, default=False)
+    ban_reason          = db.Column(db.String(255))
+    verification_token  = db.Column(db.String(100))
+    reset_token         = db.Column(db.String(100))
     reset_token_expires = db.Column(db.DateTime)
-    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
-    last_seen = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
-    preferences = db.Column(db.Text, default='{}')
-    videos = db.relationship('Video', backref='author', lazy='dynamic', foreign_keys='Video.user_id')
-    comments = db.relationship('Comment', backref='author', lazy='dynamic')
-    likes = db.relationship('Like', backref='user', lazy='dynamic')
-    playlists = db.relationship('Playlist', backref='owner', lazy='dynamic')
-    notifications = db.relationship('Notification', backref='user', lazy='dynamic', foreign_keys='Notification.user_id')
-    subscribed_to = db.relationship(
-        'User', secondary=subscriptions,
-        primaryjoin=(subscriptions.c.subscriber_id == id),
-        secondaryjoin=(subscriptions.c.channel_id == id),
-        backref=db.backref('subscribers', lazy='dynamic'), lazy='dynamic'
+    created_at          = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    last_seen           = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    preferences         = db.Column(db.Text, default='{}')
+    videos              = db.relationship('Video', backref='author', lazy='dynamic', foreign_keys='Video.user_id')
+    comments            = db.relationship('Comment', backref='author', lazy='dynamic')
+    likes               = db.relationship('Like', backref='user', lazy='dynamic')
+    playlists           = db.relationship('Playlist', backref='owner', lazy='dynamic')
+    notifications       = db.relationship('Notification', backref='user', lazy='dynamic', foreign_keys='Notification.user_id')
+    subscribed_to       = db.relationship(
+        'User', secondary    = subscriptions,
+               primaryjoin   = (subscriptions.c.subscriber_id == id),
+               secondaryjoin = (subscriptions.c.channel_id == id),
+               backref       = db.backref('subscribers', lazy='dynamic'), lazy = 'dynamic'
     )
     def set_password(self, p): self.password_hash = generate_password_hash(p)
     def check_password(self, p): return check_password_hash(self.password_hash, p)
