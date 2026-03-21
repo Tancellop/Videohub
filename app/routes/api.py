@@ -285,6 +285,28 @@ def api_search():
     })
 
 
+# --- REPORTS ---
+
+@api_bp.route('/report', methods=['POST'])
+def api_report():
+    from flask_login import current_user
+    if not current_user.is_authenticated:
+        return jsonify({'error': 'Authentication required'}), 401
+    body = request.get_json(silent=True) or {}
+    video_id = body.get('video_id')
+    reason   = body.get('reason', '').strip()
+    if not video_id or not reason:
+        return jsonify({'error': 'video_id and reason required'}), 400
+    video = Video.query.get(video_id)
+    if not video:
+        return jsonify({'error': 'Video not found'}), 404
+    from app.models import Report
+    report = Report(reporter_id=current_user.id, video_id=video_id, reason=reason[:100])
+    db.session.add(report)
+    db.session.commit()
+    return jsonify({'success': True})
+
+
 # --- ERROR HANDLERS ---
 
 @api_bp.errorhandler(404)
