@@ -2,280 +2,464 @@
 {% block title %}Shorts{% endblock %}
 {% block body_class %}shorts-page{% endblock %}
 
-{% block content %}
+{% block extra_head %}
 <style>
-/* Full-screen shorts experience */
-.shorts-page .content { padding:0; max-width:none; }
+/* ── Shorts: reset layout ────────────────────────────────────── */
+.shorts-page .content { padding: 0 !important; max-width: none !important; }
+.shorts-page .main-wrapper { overflow: hidden; }
 
-.shorts-container {
-  position:relative;
-  width:100%;
-  height:calc(100vh - var(--nav-h));
-  display:flex;
-  gap:0;
+/* ── Root container ──────────────────────────────────────────── */
+.shorts-root {
+  display: flex;
+  height: calc(100vh - var(--nav-h));
+  width: 100%;
+  overflow: hidden;
+  background: #000;
 }
 
+/* ── Feed column ─────────────────────────────────────────────── */
 .shorts-feed {
-  flex:1;
-  height:100%;
-  overflow-y:scroll;
-  scroll-snap-type:y mandatory;
-  scroll-behavior:smooth;
-  scrollbar-width:none;
+  flex: 1;
+  height: 100%;
+  overflow-y: scroll;
+  scroll-snap-type: y mandatory;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
-.shorts-feed::-webkit-scrollbar { display:none; }
+.shorts-feed::-webkit-scrollbar { display: none; }
 
+/* ── Individual short slide ──────────────────────────────────── */
 .short-slide {
-  height:calc(100vh - var(--nav-h));
-  scroll-snap-align:start;
-  position:relative;
-  background:#000;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  overflow:hidden;
+  position: relative;
+  width: 100%;
+  height: calc(100vh - var(--nav-h));
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
 }
 
+/* ── Video element ───────────────────────────────────────────── */
 .short-video {
-  height:100%;
-  width:auto;
-  max-width:100%;
-  display:block;
-  cursor:pointer;
-  object-fit:contain;
+  height: 100%;
+  width: auto;
+  max-width: 100%;
+  object-fit: contain;
+  cursor: pointer;
+  display: block;
+}
+@media (max-width: 600px) {
+  .short-video { width: 100%; object-fit: cover; }
 }
 
-/* Portrait phones: full-width */
-@media(max-width:480px) {
-  .short-video { width:100%; height:100%; object-fit:cover; }
+/* ── Play/pause flash icon ───────────────────────────────────── */
+.play-flash {
+  position: absolute;
+  left: 50%; top: 50%;
+  transform: translate(-50%, -50%) scale(0);
+  width: 72px; height: 72px;
+  background: rgba(0,0,0,.55);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  pointer-events: none;
+  opacity: 0;
+  transition: transform .12s var(--ease-spring), opacity .25s;
+  z-index: 20;
 }
+.play-flash.show {
+  transform: translate(-50%, -50%) scale(1);
+  opacity: 1;
+}
+.play-flash svg { color: #fff; }
 
-/* Overlay: actions (right side) */
-.short-actions {
-  position:absolute;
-  right:16px;
-  bottom:100px;
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  gap:18px;
-  z-index:10;
-}
-.short-action-btn {
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  gap:4px;
-  cursor:pointer;
-  color:#fff;
-}
-.short-action-btn .icon-circle {
-  width:44px; height:44px;
-  background:rgba(255,255,255,.15);
-  border-radius:50%;
-  display:flex; align-items:center; justify-content:center;
-  font-size:22px;
-  backdrop-filter:blur(4px);
-  transition:background .2s, transform .15s;
-}
-.short-action-btn:hover .icon-circle { background:rgba(255,255,255,.28); }
-.short-action-btn.liked .icon-circle { background:rgba(232,70,70,.5); }
-.short-action-btn .count { font-size:12px; font-weight:700; text-shadow:0 1px 4px rgba(0,0,0,.8); }
-
-/* Overlay: info (bottom) */
+/* ── Bottom gradient + info ──────────────────────────────────── */
 .short-info {
-  position:absolute;
-  left:0; right:70px; bottom:0;
-  padding:20px 16px 28px;
-  background:linear-gradient(transparent,rgba(0,0,0,.8));
-  z-index:10;
+  position: absolute;
+  left: 0; right: 80px; bottom: 0;
+  padding: 80px 16px 28px;
+  background: linear-gradient(transparent, rgba(0,0,0,.85));
+  z-index: 10;
+  pointer-events: none;
 }
-.short-author {
-  display:flex; align-items:center; gap:10px;
-  margin-bottom:10px;
+.short-info * { pointer-events: auto; }
+
+.short-author-row {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 10px;
 }
 .short-author-avatar {
-  width:36px; height:36px; border-radius:50%;
-  border:2px solid rgba(255,255,255,.6);
-  overflow:hidden;
+  width: 36px; height: 36px; border-radius: 50%;
+  overflow: hidden; border: 2px solid rgba(255,255,255,.6);
+  flex-shrink: 0;
 }
-.short-author-name { font-weight:700; font-size:14px; color:#fff; text-shadow:0 1px 4px rgba(0,0,0,.8); }
-.short-title-text { font-size:14px; color:#fff; line-height:1.5; text-shadow:0 1px 4px rgba(0,0,0,.8); margin-bottom:8px; }
-.short-tags { display:flex; gap:6px; flex-wrap:wrap; }
-.short-tag { font-size:12px; color:rgba(255,255,255,.8); }
-
-/* Play/pause overlay */
-.play-icon {
-  position:absolute; left:50%; top:50%;
-  transform:translate(-50%,-50%) scale(0);
-  font-size:72px; color:#fff;
-  pointer-events:none;
-  transition:transform .15s, opacity .3s;
-  opacity:0;
-  text-shadow:0 0 30px rgba(0,0,0,.5);
+.short-author-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.short-author-name {
+  font-size: 14px; font-weight: 700; color: #fff;
+  text-shadow: 0 1px 4px rgba(0,0,0,.8);
 }
-.play-icon.show { transform:translate(-50%,-50%) scale(1); opacity:1; }
+.short-title-txt {
+  font-size: 14px; color: #fff; line-height: 1.5;
+  text-shadow: 0 1px 4px rgba(0,0,0,.8);
+  margin-bottom: 6px;
+  /* BUG FIX: was showing &amp; — now rendered via JS textContent */
+}
+.short-tags-row { display: flex; gap: 6px; flex-wrap: wrap; }
+.short-tag { font-size: 12px; color: rgba(255,255,255,.8); }
 
-/* Sidebar nav (desktop) */
+/* ── Progress bar (YouTube-style) ────────────────────────────── */
+.short-progress {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  height: 3px;
+  background: rgba(255,255,255,.25);
+  z-index: 15;
+  cursor: pointer;
+}
+.short-progress-fill {
+  height: 100%;
+  background: var(--red);
+  width: 0%;
+  pointer-events: none;
+  transition: width .1s linear;
+}
+.short-progress:hover { height: 5px; }
+
+/* ── Right-side action buttons ───────────────────────────────── */
+.short-actions {
+  position: absolute;
+  right: 12px; bottom: 80px;
+  display: flex; flex-direction: column;
+  align-items: center; gap: 20px;
+  z-index: 10;
+}
+.sa-btn {
+  display: flex; flex-direction: column;
+  align-items: center; gap: 5px;
+  cursor: pointer; border: none; background: none;
+  color: #fff; padding: 0;
+}
+.sa-btn .ic {
+  width: 48px; height: 48px; border-radius: 50%;
+  background: rgba(255,255,255,.15);
+  backdrop-filter: blur(8px);
+  display: flex; align-items: center; justify-content: center;
+  transition: background .18s, transform .15s;
+}
+.sa-btn:hover .ic { background: rgba(255,255,255,.28); transform: scale(1.07); }
+.sa-btn.liked .ic { background: rgba(255,40,85,.6); }
+.sa-btn.liked .ic svg { color: #ff2855; }
+.sa-btn .lbl {
+  font-size: 11px; font-weight: 700;
+  text-shadow: 0 1px 4px rgba(0,0,0,.9);
+  min-width: 30px; text-align: center;
+  line-height: 1;
+}
+
+/* ── Volume indicator ────────────────────────────────────────── */
+.short-volume-icon {
+  position: absolute; top: 16px; right: 16px;
+  z-index: 20;
+  opacity: 0; transition: opacity .3s;
+  pointer-events: none;
+}
+.short-volume-icon.show { opacity: 1; }
+.short-volume-icon .ic-wrap {
+  background: rgba(0,0,0,.6); border-radius: 50%;
+  width: 44px; height: 44px;
+  display: flex; align-items: center; justify-content: center;
+  backdrop-filter: blur(8px);
+}
+
+/* ── Nav arrows (keyboard hint) ─────────────────────────────── */
+.short-nav-arrows {
+  position: absolute; right: 12px; top: 50%;
+  transform: translateY(-50%);
+  display: flex; flex-direction: column; gap: 8px; z-index: 10;
+}
+.short-nav-btn {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: rgba(255,255,255,.15);
+  border: none; cursor: pointer; color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  backdrop-filter: blur(8px);
+  transition: background .18s;
+}
+.short-nav-btn:hover { background: rgba(255,255,255,.3); }
+
+/* ── Sidebar (desktop) ───────────────────────────────────────── */
 .shorts-sidebar {
-  width:340px;
-  flex-shrink:0;
-  padding:20px;
-  overflow-y:auto;
-  border-left:1px solid var(--border);
-  background:var(--bg-1);
-  display:none;
+  width: 360px; flex-shrink: 0;
+  background: var(--bg-1);
+  border-left: 1px solid var(--border);
+  display: none;
+  flex-direction: column;
+  padding: 24px 20px;
+  overflow-y: auto;
 }
-@media(min-width:900px) { .shorts-sidebar{display:block;} }
+@media (min-width: 960px) { .shorts-sidebar { display: flex; } }
 
-/* Upload button */
-.shorts-upload-fab {
-  position:fixed; bottom:28px; right:28px; z-index:200;
-  width:56px; height:56px; border-radius:50%;
-  background:var(--accent); color:#fff;
-  display:flex; align-items:center; justify-content:center;
-  font-size:26px;
-  box-shadow:0 4px 20px rgba(232,70,70,.5);
-  transition:transform .2s;
+/* ── Comment drawer ──────────────────────────────────────────── */
+.cmt-drawer {
+  position: fixed; inset: 0; z-index: 500;
+  display: none; align-items: flex-end;
 }
-.shorts-upload-fab:hover { transform:scale(1.1); }
+.cmt-drawer.open { display: flex; }
+.cmt-backdrop {
+  position: absolute; inset: 0;
+  background: rgba(0,0,0,.6);
+  backdrop-filter: blur(4px);
+}
+.cmt-panel {
+  position: relative; z-index: 1;
+  width: min(440px, 100vw);
+  height: 70vh;
+  background: var(--bg-2);
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  display: flex; flex-direction: column;
+  margin: 0 auto;
+  box-shadow: 0 -20px 60px rgba(0,0,0,.6);
+  animation: drawerUp .3s var(--ease-spring);
+}
+@keyframes drawerUp { from { transform: translateY(100%); } }
+.cmt-handle {
+  width: 40px; height: 4px; border-radius: 2px;
+  background: var(--border-bright);
+  margin: 10px auto 0;
+  flex-shrink: 0;
+}
+.cmt-header {
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  flex-shrink: 0;
+}
+.cmt-list {
+  flex: 1; overflow-y: auto; padding: 14px 16px;
+}
+.cmt-list::-webkit-scrollbar { width: 4px; }
+.cmt-list::-webkit-scrollbar-thumb { background: var(--bg-4); border-radius: 2px; }
+.cmt-footer {
+  padding: 10px 14px;
+  border-top: 1px solid var(--border);
+  display: flex; gap: 8px; align-items: center;
+  flex-shrink: 0;
+}
+.cmt-txt {
+  flex: 1; background: var(--bg-3); border: 1px solid var(--border);
+  border-radius: 999px; padding: 9px 16px; color: var(--text-0);
+  font-size: 13px; outline: none;
+  transition: border-color var(--t);
+}
+.cmt-txt:focus { border-color: var(--border-cyan); }
 
-/* Comment drawer */
-.comment-drawer {
-  position:fixed; inset:0; z-index:300;
-  display:none;
+/* ── Upload FAB ──────────────────────────────────────────────── */
+.shorts-fab {
+  position: fixed; bottom: 24px; right: 24px;
+  width: 52px; height: 52px; border-radius: 50%;
+  background: var(--red); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 4px 20px var(--red-glow);
+  font-size: 24px; z-index: 200; text-decoration: none;
+  transition: transform .2s, box-shadow .2s;
 }
-.comment-drawer.open { display:flex; }
-.comment-drawer-bg { flex:1; background:rgba(0,0,0,.5); }
-.comment-drawer-panel {
-  width:min(400px,100vw);
-  background:var(--bg-1);
-  border-left:1px solid var(--border);
-  display:flex; flex-direction:column;
-  animation:slideFromRight .25s ease;
-}
-@keyframes slideFromRight { from{transform:translateX(100%)} }
-.comment-list { flex:1; overflow-y:auto; padding:16px; }
-.comment-input-area { padding:12px 16px; border-top:1px solid var(--border); display:flex; gap:8px; }
-.comment-input-area input { flex:1; background:var(--bg-2); border:1px solid var(--border); border-radius:var(--radius-sm); padding:8px 12px; color:var(--text-0); font-size:13px; }
-.comment-input-area input:focus { outline:none; border-color:var(--accent); }
+.shorts-fab:hover { transform: scale(1.1); box-shadow: 0 6px 28px var(--red-glow); }
 </style>
+{% endblock %}
 
-<div class="shorts-container">
-  <!-- Feed -->
+{% block content %}
+
+<div class="shorts-root">
+
+  <!-- ── Feed ─────────────────────────────────────── -->
   <div class="shorts-feed" id="shortsFeed">
+
     {% for short in shorts.items %}
-    <div class="short-slide" data-id="{{ short.id }}" data-liked="{{ 'true' if short.id in liked_ids else 'false' }}">
-      <video class="short-video"
-             src="{{ url_for('videos.serve_video', filename=short.filename) }}"
+    <div class="short-slide"
+         data-id="{{ short.id }}"
+         data-liked="{{ 'true' if short.id in liked_ids else 'false' }}"
+         data-likes="{{ short.like_count() }}">
+
+      <video class="short-video" id="vid{{ short.id }}"
              loop playsinline preload="none"
-             poster="{{ url_for('videos.serve_thumbnail', filename=short.thumbnail) if short.thumbnail else '' }}"
+             src="{{ url_for('videos.serve_video', filename=short.filename) }}"
+             {% if short.thumbnail %}poster="{{ url_for('videos.serve_thumbnail', filename=short.thumbnail) }}"{% endif %}
              onclick="togglePlay(this)">
       </video>
-      <div class="play-icon" id="playIcon{{ short.id }}">▶</div>
 
-      <!-- Info -->
+      <!-- Play flash -->
+      <div class="play-flash" id="flash{{ short.id }}">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+      </div>
+
+      <!-- Progress bar -->
+      <div class="short-progress" id="prog{{ short.id }}" onclick="seekVideo(event, {{ short.id }})">
+        <div class="short-progress-fill" id="fill{{ short.id }}"></div>
+      </div>
+
+      <!-- Volume indicator -->
+      <div class="short-volume-icon" id="volIcon{{ short.id }}">
+        <div class="ic-wrap">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" id="volSvg{{ short.id }}">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+            <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+          </svg>
+        </div>
+      </div>
+
+      <!-- Info overlay -->
       <div class="short-info">
-        <div class="short-author">
+        <div class="short-author-row">
           <a href="{{ url_for('users.profile', username=short.author.username) }}" class="short-author-avatar">
-            <img src="{{ url_for('static', filename='img/default_avatar.png') }}" style="width:100%;height:100%;object-fit:cover;" alt="">
+            <img src="{{ url_for('static', filename='uploads/avatars/' + short.author.avatar) if short.author.avatar and short.author.avatar != 'default_avatar.png' else url_for('static', filename='img/default_avatar.png') }}"
+                 alt="{{ short.author.username }}"
+                 onerror="this.src='{{ url_for('static', filename='img/default_avatar.png') }}'">
           </a>
           <span class="short-author-name">{{ short.author.display_name or short.author.username }}</span>
         </div>
-        <div class="short-title-text">{{ short.title }}</div>
+        <!-- BUG FIX: use data-title attr, JS sets textContent to avoid &amp; encoding issues -->
+        <div class="short-title-txt" data-title="{{ short.title }}"></div>
         {% if short.tags %}
-        <div class="short-tags">
-          {% for tag in short.tags[:5] %}
-          <span class="short-tag">#{{ tag.name }}</span>
-          {% endfor %}
+        <div class="short-tags-row">
+          {% for tag in short.tags[:5] %}<span class="short-tag">#{{ tag.name }}</span>{% endfor %}
         </div>
         {% endif %}
       </div>
 
-      <!-- Actions -->
+      <!-- Action buttons -->
       <div class="short-actions">
+
         <!-- Like -->
-        <button class="short-action-btn {{ 'liked' if short.id in liked_ids else '' }}"
+        <button class="sa-btn {{ 'liked' if short.id in liked_ids else '' }}"
                 id="likeBtn{{ short.id }}"
-                onclick="likeShort({{ short.id }}, this)">
-          <div class="icon-circle">❤️</div>
-          <span class="count" id="likeCount{{ short.id }}">{{ short.like_count() | format_views }}</span>
+                onclick="likeShort({{ short.id }}, this)"
+                aria-label="Лайк">
+          <div class="ic">
+            <svg width="22" height="22" viewBox="0 0 24 24"
+                 fill="{{ 'currentColor' if short.id in liked_ids else 'none' }}"
+                 stroke="currentColor" stroke-width="2">
+              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+            </svg>
+          </div>
+          <span class="lbl" id="likeCount{{ short.id }}">{{ short.like_count() | format_views }}</span>
         </button>
 
-        <!-- Comment -->
-        <button class="short-action-btn" onclick="openComments({{ short.id }}, '{{ short.title | replace("'","\\'")|truncate(40) }}')">
-          <div class="icon-circle">💬</div>
-          <span class="count">{{ short.comment_count() }}</span>
+        <!-- Comments -->
+        <button class="sa-btn"
+                onclick="openComments({{ short.id }}, this)"
+                aria-label="Комментарии"
+                data-title="{{ short.title | e }}">
+          <div class="ic">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+            </svg>
+          </div>
+          <span class="lbl">{{ short.comment_count() }}</span>
         </button>
 
         <!-- Share -->
-        <button class="short-action-btn" onclick="shareShort('{{ url_for('videos.watch', slug=short.slug, _external=True) }}')">
-          <div class="icon-circle">↗</div>
-          <span class="count">Поделиться</span>
+        <button class="sa-btn"
+                onclick="shareShort('{{ url_for('videos.watch', slug=short.slug, _external=True) }}')"
+                aria-label="Поделиться">
+          <div class="ic">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
+              <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+            </svg>
+          </div>
+          <span class="lbl">Поделиться</span>
         </button>
 
-        <!-- Full video -->
-        <a href="{{ url_for('videos.watch', slug=short.slug) }}" class="short-action-btn">
-          <div class="icon-circle">🔗</div>
-          <span class="count">Полное</span>
-        </a>
-      </div>
-    </div>
+        <!-- Mute toggle -->
+        <button class="sa-btn" id="muteBtn{{ short.id }}"
+                onclick="toggleMute({{ short.id }}, this)"
+                aria-label="Звук">
+          <div class="ic">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                 id="muteSvg{{ short.id }}">
+              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+              <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+              <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+            </svg>
+          </div>
+          <span class="lbl" id="muteLbl{{ short.id }}">Звук</span>
+        </button>
+
+      </div><!-- /short-actions -->
+
+    </div><!-- /short-slide -->
     {% endfor %}
 
-    <!-- Loading sentinel -->
-    <div id="loadSentinel" style="height:10px;"></div>
-  </div>
+    <div id="loadSentinel" style="height:4px;"></div>
+  </div><!-- /shorts-feed -->
 
-  <!-- Desktop sidebar -->
+  <!-- ── Desktop Sidebar ──────────────────────── -->
   <div class="shorts-sidebar">
-    <div style="font-family:var(--font-display);font-size:28px;letter-spacing:3px;margin-bottom:20px;">
-      📱 <span style="color:var(--accent)">Shorts</span>
+    <div style="font-family:var(--font-display);font-size:30px;letter-spacing:3px;margin-bottom:6px;">
+      <span style="color:var(--red);">Shorts</span>
     </div>
-    <p style="font-size:13px;color:var(--text-2);line-height:1.7;margin-bottom:20px;">
-      Короткие видео до 60 секунд. Листайте вверх/вниз — открывайте новое.
+    <p style="font-size:13px;color:var(--text-2);line-height:1.8;margin-bottom:20px;">
+      Короткие видео до 60 секунд.<br>Листай вверх/вниз и открывай новое.
     </p>
-    <a href="{{ url_for('shorts.upload') }}" class="btn-primary" style="display:block;text-align:center;margin-bottom:20px;">
-      + Загрузить Short
+    <a href="{{ url_for('shorts.upload') }}" class="btn-primary" style="justify-content:center;margin-bottom:20px;">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+      </svg>
+      Загрузить Short
     </a>
     <div style="height:1px;background:var(--border);margin-bottom:20px;"></div>
-    <div style="font-size:12px;color:var(--text-3);margin-bottom:10px;text-transform:uppercase;letter-spacing:1px;">Управление</div>
-    <div style="font-size:13px;color:var(--text-2);line-height:2;">
-      ↑↓ Прокрутка<br>
-      Пробел — пауза/воспроизведение<br>
-      M — звук
+    <div style="font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:12px;">Управление</div>
+    <div style="font-size:13px;color:var(--text-2);line-height:2.4;">
+      <div>↑ / ↓ &nbsp;—&nbsp; листать</div>
+      <div>Пробел &nbsp;—&nbsp; пауза / играть</div>
+      <div>M &nbsp;—&nbsp; звук вкл/выкл</div>
+      <div>← → &nbsp;—&nbsp; перемотка ±5 сек</div>
     </div>
   </div>
-</div>
 
-<!-- Upload FAB (mobile) -->
+</div><!-- /shorts-root -->
+
+<!-- ── Upload FAB (mobile) ─────────────────── -->
 {% if current_user.is_authenticated %}
-<a href="{{ url_for('shorts.upload') }}" class="shorts-upload-fab" title="Загрузить Short">+</a>
+<a href="{{ url_for('shorts.upload') }}" class="shorts-fab" title="Загрузить Short">
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+    <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+  </svg>
+</a>
 {% endif %}
 
-<!-- Comment drawer -->
-<div class="comment-drawer" id="commentDrawer">
-  <div class="comment-drawer-bg" onclick="closeComments()"></div>
-  <div class="comment-drawer-panel">
-    <div style="padding:16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
+<!-- ── Comment Drawer ──────────────────────── -->
+<div class="cmt-drawer" id="cmtDrawer">
+  <div class="cmt-backdrop" onclick="closeComments()"></div>
+  <div class="cmt-panel">
+    <div class="cmt-handle"></div>
+    <div class="cmt-header">
       <div>
-        <div style="font-weight:700;font-size:14px;">Комментарии</div>
-        <div id="drawerShortTitle" style="font-size:12px;color:var(--text-2);"></div>
+        <div style="font-family:var(--font-heading);font-size:16px;font-weight:700;">Комментарии</div>
+        <div id="cmtTitle" style="font-size:12px;color:var(--text-2);margin-top:2px;max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></div>
       </div>
-      <button onclick="closeComments()" style="font-size:22px;color:var(--text-2);">×</button>
+      <button onclick="closeComments()" style="color:var(--text-2);font-size:22px;line-height:1;">×</button>
     </div>
-    <div class="comment-list" id="commentList">
-      <div style="text-align:center;color:var(--text-3);padding:24px;font-size:14px;">Загрузка…</div>
+    <div class="cmt-list" id="cmtList">
+      <div style="text-align:center;padding:32px;color:var(--text-3);">Загрузка…</div>
     </div>
     {% if current_user.is_authenticated %}
-    <div class="comment-input-area">
-      <input type="text" id="commentInput" placeholder="Комментарий…" maxlength="500"
+    <div class="cmt-footer">
+      <img src="{{ url_for('static', filename='uploads/avatars/' + current_user.avatar) if current_user.avatar and current_user.avatar != 'default_avatar.png' else url_for('static', filename='img/default_avatar.png') }}"
+           style="width:32px;height:32px;border-radius:50%;object-fit:cover;flex-shrink:0;"
+           onerror="this.src='{{ url_for('static', filename='img/default_avatar.png') }}'">
+      <input type="text" class="cmt-txt" id="cmtInput"
+             placeholder="Добавить комментарий…" maxlength="500"
              onkeydown="if(event.key==='Enter')postComment()">
-      <button onclick="postComment()" class="btn-primary" style="padding:8px 12px;font-size:13px;">➤</button>
+      <button onclick="postComment()" class="btn-primary" style="padding:9px 14px;font-size:13px;border-radius:999px;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+      </button>
     </div>
     {% else %}
-    <div style="padding:12px 16px;text-align:center;font-size:13px;color:var(--text-2);">
-      <a href="{{ url_for('auth.login') }}" style="color:var(--accent);">Войдите</a> для комментариев
+    <div style="padding:14px 16px;text-align:center;font-size:13px;color:var(--text-2);">
+      <a href="{{ url_for('auth.login') }}" style="color:var(--red);font-weight:600;">Войдите</a> для комментариев
     </div>
     {% endif %}
   </div>
@@ -285,191 +469,390 @@
 
 {% block extra_scripts %}
 <script>
-let currentShortId = null;
-let currentPage    = {{ shorts.page }};
-let hasMore        = {{ 'true' if shorts.has_next else 'false' }};
-let loading        = false;
+// ── State ─────────────────────────────────────────────────────
+const IS_AUTH     = {{ 'true' if current_user.is_authenticated else 'false' }};
+let   currentCmtId = null;
+let   currentPage  = {{ shorts.page }};
+let   hasMore      = {{ 'true' if shorts.has_next else 'false' }};
+let   isLoadingMore = false;
 
-// ── Auto-play via IntersectionObserver ─────────────────────────────────────
-const io = new IntersectionObserver((entries) => {
+// ── Fix HTML entity bug: set titles via textContent ───────────
+document.querySelectorAll('.short-title-txt[data-title]').forEach(el => {
+  el.textContent = el.dataset.title;
+});
+
+// ── IntersectionObserver: auto-play visible slide ─────────────
+const playObserver = new IntersectionObserver((entries) => {
   entries.forEach(entry => {
     const video = entry.target.querySelector('video');
     if (!video) return;
     if (entry.isIntersecting) {
-      video.play().catch(()=>{});
+      // Pause all others first
+      document.querySelectorAll('.short-video').forEach(v => {
+        if (v !== video) { v.pause(); }
+      });
+      video.play().catch(() => {});
+      startProgress(video);
     } else {
       video.pause();
+      stopProgress(video);
     }
   });
-}, { threshold: 0.6 });
+}, {
+  root: document.getElementById('shortsFeed'),
+  threshold: 0.65
+});
 
-document.querySelectorAll('.short-slide').forEach(slide => io.observe(slide));
+document.querySelectorAll('.short-slide').forEach(s => playObserver.observe(s));
 
-// ── Pause/play on click ─────────────────────────────────────────────────────
-function togglePlay(video) {
+// ── Progress bar ──────────────────────────────────────────────
+const progressTimers = {};
+
+function startProgress(video) {
   const slide = video.closest('.short-slide');
-  const icon  = slide.querySelector('.play-icon');
-  if (video.paused) {
-    video.play();
-    if (icon) { icon.classList.add('show'); setTimeout(()=>icon.classList.remove('show'),600); }
-  } else {
-    video.pause();
-    if (icon) icon.classList.add('show');
+  if (!slide) return;
+  const id   = slide.dataset.id;
+  const fill = document.getElementById('fill' + id);
+  if (!fill) return;
+
+  stopProgress(video);
+  progressTimers[id] = setInterval(() => {
+    if (video.duration && !isNaN(video.duration)) {
+      fill.style.width = (video.currentTime / video.duration * 100) + '%';
+    }
+  }, 80);
+}
+
+function stopProgress(video) {
+  const slide = video.closest('.short-slide');
+  if (!slide) return;
+  const id = slide.dataset.id;
+  if (progressTimers[id]) {
+    clearInterval(progressTimers[id]);
+    delete progressTimers[id];
   }
 }
 
-// ── Keyboard shortcuts ──────────────────────────────────────────────────────
-document.addEventListener('keydown', e => {
-  const feed   = document.getElementById('shortsFeed');
-  const slides = [...document.querySelectorAll('.short-slide')];
-  const current = slides.find(s => {
-    const r = s.getBoundingClientRect();
-    return r.top >= -50 && r.top < window.innerHeight / 2;
-  });
-  if (!current) return;
-  const video = current.querySelector('video');
-
-  if (e.code === 'Space') { e.preventDefault(); togglePlay(video); }
-  if (e.code === 'KeyM')  { video.muted = !video.muted; }
-  if (e.code === 'ArrowUp')   { e.preventDefault(); feed.scrollBy({top:-window.innerHeight,behavior:'smooth'}); }
-  if (e.code === 'ArrowDown') { e.preventDefault(); feed.scrollBy({top:window.innerHeight,behavior:'smooth'}); }
-});
-
-// ── Like ────────────────────────────────────────────────────────────────────
-async function likeShort(id, btn) {
-  const isLiked = btn.classList.contains('liked');
-  try {
-    const data = await apiCall(`/shorts/${id}/like`, 'POST', { is_like: !isLiked });
-    if (data.likes !== undefined) {
-      btn.classList.toggle('liked', data.liked);
-      document.getElementById(`likeCount${id}`).textContent = data.likes;
-    }
-  } catch { showToast('Ошибка', 'error'); }
+function seekVideo(e, id) {
+  const video = document.getElementById('vid' + id);
+  const bar   = document.getElementById('prog' + id);
+  if (!video || !bar) return;
+  const rect = bar.getBoundingClientRect();
+  const pct  = (e.clientX - rect.left) / rect.width;
+  video.currentTime = pct * (video.duration || 0);
 }
 
-// ── Comments ────────────────────────────────────────────────────────────────
-function openComments(id, title) {
-  currentShortId = id;
-  document.getElementById('drawerShortTitle').textContent = title;
-  document.getElementById('commentDrawer').classList.add('open');
+// ── Toggle play/pause on video click ─────────────────────────
+function togglePlay(video) {
+  const slide = video.closest('.short-slide');
+  const flash = slide ? slide.querySelector('.play-flash') : null;
+
+  if (video.paused) {
+    video.play().catch(() => {});
+    startProgress(video);
+    if (flash) showFlash(flash, false); // show pause icon briefly
+  } else {
+    video.pause();
+    stopProgress(video);
+    if (flash) showFlash(flash, true);  // show play icon
+  }
+}
+
+function showFlash(el, isPlay) {
+  // Update icon
+  el.innerHTML = isPlay
+    ? '<svg width="28" height="28" viewBox="0 0 24 24" fill="#fff"><polygon points="5 3 19 12 5 21 5 3"/></svg>'
+    : '<svg width="28" height="28" viewBox="0 0 24 24" fill="#fff"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>';
+  el.classList.add('show');
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.classList.remove('show'), 500);
+}
+
+// ── Toggle mute ───────────────────────────────────────────────
+function toggleMute(id, btn) {
+  const video   = document.getElementById('vid' + id);
+  const muteSvg = document.getElementById('muteSvg' + id);
+  const muteLbl = document.getElementById('muteLbl' + id);
+  const volIcon = document.getElementById('volIcon' + id);
+  const volSvg  = document.getElementById('volSvg' + id);
+  if (!video) return;
+
+  video.muted = !video.muted;
+  const muted = video.muted;
+
+  // Update mute button svg
+  muteSvg.innerHTML = muted
+    ? `<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+       <line x1="23" y1="9" x2="17" y2="15"/>
+       <line x1="17" y1="9" x2="23" y2="15"/>`
+    : `<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+       <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+       <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>`;
+  muteLbl.textContent = muted ? 'Без звука' : 'Звук';
+
+  // Show volume indicator overlay briefly
+  if (volIcon && volSvg) {
+    volSvg.innerHTML = muteSvg.innerHTML;
+    volIcon.classList.add('show');
+    clearTimeout(volIcon._t);
+    volIcon._t = setTimeout(() => volIcon.classList.remove('show'), 1000);
+  }
+}
+
+// ── Like ──────────────────────────────────────────────────────
+async function likeShort(id, btn) {
+  if (!IS_AUTH) {
+    showToast('Войдите чтобы ставить лайки', 'info');
+    return;
+  }
+  // Optimistic UI update
+  const isLiked = btn.classList.contains('liked');
+  const countEl = document.getElementById('likeCount' + id);
+  const svgEl   = btn.querySelector('svg');
+  const cur     = parseInt(countEl?.textContent?.replace(/[^\d]/g, '') || '0');
+
+  btn.classList.toggle('liked', !isLiked);
+  if (svgEl) svgEl.setAttribute('fill', isLiked ? 'none' : 'currentColor');
+  if (countEl) countEl.textContent = isLiked ? Math.max(0, cur - 1) : cur + 1;
+
+  try {
+    const data = await apiCall(`/shorts/${id}/like`, 'POST', { is_like: true });
+    if (data.likes !== undefined) {
+      btn.classList.toggle('liked', data.liked);
+      if (svgEl) svgEl.setAttribute('fill', data.liked ? 'currentColor' : 'none');
+      if (countEl) countEl.textContent = data.likes;
+    } else {
+      // Revert on error
+      btn.classList.toggle('liked', isLiked);
+      if (svgEl) svgEl.setAttribute('fill', isLiked ? 'currentColor' : 'none');
+      if (countEl) countEl.textContent = cur;
+    }
+  } catch {
+    // Revert
+    btn.classList.toggle('liked', isLiked);
+    if (svgEl) svgEl.setAttribute('fill', isLiked ? 'currentColor' : 'none');
+    if (countEl) countEl.textContent = cur;
+    showToast('Ошибка', 'error');
+  }
+}
+
+// ── Comments ──────────────────────────────────────────────────
+function openComments(id, btn) {
+  currentCmtId = id;
+  const title = btn?.dataset?.title || '';
+  document.getElementById('cmtTitle').textContent = title;
+  document.getElementById('cmtDrawer').classList.add('open');
   loadComments(id);
+  // Pause video while commenting
+  const video = document.getElementById('vid' + id);
+  if (video) video.pause();
 }
 
 function closeComments() {
-  document.getElementById('commentDrawer').classList.remove('open');
-  currentShortId = null;
+  document.getElementById('cmtDrawer').classList.remove('open');
+  // Resume video
+  if (currentCmtId) {
+    const video = document.getElementById('vid' + currentCmtId);
+    if (video) video.play().catch(() => {});
+  }
+  currentCmtId = null;
 }
 
 async function loadComments(id) {
-  const list = document.getElementById('commentList');
-  list.innerHTML = '<div style="text-align:center;color:var(--text-3);padding:24px;font-size:14px;">Загрузка…</div>';
+  const list = document.getElementById('cmtList');
+  list.innerHTML = '<div style="text-align:center;padding:28px;color:var(--text-3);font-size:13px;">⏳ Загрузка…</div>';
   try {
     const r = await fetch(`/api/v1/videos/${id}/comments`);
     const d = await r.json();
-    if (!d.comments.length) {
-      list.innerHTML = '<div style="text-align:center;color:var(--text-3);padding:24px;font-size:14px;">Нет комментариев</div>';
+    if (!d.comments || !d.comments.length) {
+      list.innerHTML = '<div style="text-align:center;padding:28px;color:var(--text-3);font-size:13px;">💬 Пока нет комментариев</div>';
       return;
     }
     list.innerHTML = d.comments.map(c => `
-      <div style="display:flex;gap:10px;margin-bottom:14px;">
-        <div style="width:30px;height:30px;border-radius:50%;background:var(--bg-3);overflow:hidden;flex-shrink:0;">
-          <img src="/static/img/default_avatar.png" style="width:100%;height:100%;object-fit:cover;" alt="">
-        </div>
+      <div style="display:flex;gap:10px;margin-bottom:16px;">
+        <img src="/static/img/default_avatar.png" style="width:32px;height:32px;border-radius:50%;object-fit:cover;flex-shrink:0;" alt="">
         <div>
-          <div style="font-size:12px;font-weight:700;">${escapeHtml(c.author.display_name||c.author.username)}</div>
+          <div style="font-size:12px;font-weight:700;margin-bottom:3px;">${escapeHtml(c.author.display_name || c.author.username)}</div>
           <div style="font-size:13px;color:var(--text-1);line-height:1.5;">${escapeHtml(c.content)}</div>
         </div>
       </div>`).join('');
   } catch {
-    list.innerHTML = '<div style="color:var(--accent);padding:16px;">Ошибка загрузки</div>';
+    list.innerHTML = '<div style="color:var(--red);padding:16px;font-size:13px;">Ошибка загрузки</div>';
   }
 }
 
 async function postComment() {
-  if (!currentShortId) return;
-  const input   = document.getElementById('commentInput');
+  if (!currentCmtId) return;
+  const input   = document.getElementById('cmtInput');
   const content = input.value.trim();
   if (!content) return;
-  input.value   = '';
+  input.value = '';
   try {
-    const d = await apiCall(`/shorts/${currentShortId}/comment`, 'POST', { content });
-    if (d.id) { await loadComments(currentShortId); showToast('Комментарий добавлен!'); }
-    else showToast(d.error || 'Ошибка', 'error');
-  } catch { showToast('Ошибка', 'error'); }
-}
-
-// ── Share ───────────────────────────────────────────────────────────────────
-function shareShort(url) {
-  if (navigator.share) {
-    navigator.share({ url }).catch(()=>{});
-  } else {
-    navigator.clipboard.writeText(url).then(()=>showToast('Ссылка скопирована!'));
+    const d = await apiCall(`/shorts/${currentCmtId}/comment`, 'POST', { content });
+    if (d.id) {
+      await loadComments(currentCmtId);
+      showToast('Комментарий добавлен! 💬');
+    } else {
+      showToast(d.error || 'Ошибка', 'error');
+      input.value = content;
+    }
+  } catch {
+    showToast('Ошибка отправки', 'error');
+    input.value = content;
   }
 }
 
-// ── Infinite scroll ─────────────────────────────────────────────────────────
-const sentinel = document.getElementById('loadSentinel');
-const scrollIo = new IntersectionObserver(async entries => {
-  if (!entries[0].isIntersecting || !hasMore || loading) return;
-  loading = true;
-  currentPage++;
-  try {
-    const r = await fetch(`/shorts/api/next?page=${currentPage}`);
-    const items = await r.json();
-    if (!items.length) { hasMore = false; return; }
-    items.forEach(s => appendShort(s));
-    document.querySelectorAll('.short-slide:not([data-observed])').forEach(slide => {
-      slide.dataset.observed = '1';
-      io.observe(slide);
-    });
-  } catch {} finally { loading = false; }
-}, { threshold: 0.1 });
+// ── Share ─────────────────────────────────────────────────────
+function shareShort(url) {
+  if (navigator.share) {
+    navigator.share({ url }).catch(() => {});
+  } else {
+    navigator.clipboard.writeText(url)
+      .then(() => showToast('🔗 Ссылка скопирована!'));
+  }
+}
 
-scrollIo.observe(sentinel);
+// ── Keyboard shortcuts ────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  // Don't interfere when typing in comment input
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+  const feed   = document.getElementById('shortsFeed');
+  const slides = [...document.querySelectorAll('.short-slide')];
+  // Find most visible slide
+  const current = slides.find(s => {
+    const r = s.getBoundingClientRect();
+    return r.top > -s.offsetHeight * 0.4 && r.top < window.innerHeight * 0.5;
+  });
+  if (!current) return;
+  const video = current.querySelector('video');
+  const id    = current.dataset.id;
+
+  switch (e.code) {
+    case 'Space':
+      e.preventDefault();
+      togglePlay(video);
+      break;
+    case 'KeyM':
+      toggleMute(id, document.getElementById('muteBtn' + id));
+      break;
+    case 'ArrowUp':
+      e.preventDefault();
+      feed.scrollBy({ top: -window.innerHeight, behavior: 'smooth' });
+      break;
+    case 'ArrowDown':
+      e.preventDefault();
+      feed.scrollBy({ top: window.innerHeight, behavior: 'smooth' });
+      break;
+    case 'ArrowLeft':
+      e.preventDefault();
+      video.currentTime = Math.max(0, video.currentTime - 5);
+      break;
+    case 'ArrowRight':
+      e.preventDefault();
+      video.currentTime = Math.min(video.duration || 0, video.currentTime + 5);
+      break;
+  }
+});
+
+// ── Infinite scroll ───────────────────────────────────────────
+const sentinel = document.getElementById('loadSentinel');
+if (sentinel) {
+  const moreObserver = new IntersectionObserver(async entries => {
+    if (!entries[0].isIntersecting || !hasMore || isLoadingMore) return;
+    isLoadingMore = true;
+    currentPage++;
+    try {
+      const r     = await fetch(`/shorts/api/next?page=${currentPage}`);
+      const items = await r.json();
+      if (!items.length) { hasMore = false; return; }
+      items.forEach(s => appendShort(s));
+      // Observe new slides
+      document.querySelectorAll('.short-slide:not([data-obs])').forEach(slide => {
+        slide.dataset.obs = '1';
+        playObserver.observe(slide);
+      });
+    } catch {} finally { isLoadingMore = false; }
+  }, { threshold: 0.1 });
+  moreObserver.observe(sentinel);
+}
 
 function appendShort(s) {
   const feed = document.getElementById('shortsFeed');
   const div  = document.createElement('div');
-  div.className = 'short-slide';
-  div.dataset.id = s.id;
+  div.className    = 'short-slide';
+  div.dataset.id   = s.id;
+  div.dataset.liked = 'false';
+  div.dataset.likes = s.likes;
+
   div.innerHTML = `
-    <video class="short-video" src="/videos/serve/${s.filename}" loop playsinline preload="none"
-           ${s.thumbnail ? `poster="/videos/thumbnail/${s.thumbnail}"` : ''}
+    <video class="short-video" id="vid${s.id}" loop playsinline preload="none"
+           src="/videos/serve/${escapeHtml(s.filename)}"
+           ${s.thumbnail ? `poster="/videos/thumbnail/${escapeHtml(s.thumbnail)}"` : ''}
            onclick="togglePlay(this)"></video>
-    <div class="play-icon" id="playIcon${s.id}">▶</div>
+    <div class="play-flash" id="flash${s.id}">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="#fff"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+    </div>
+    <div class="short-progress" id="prog${s.id}" onclick="seekVideo(event,${s.id})">
+      <div class="short-progress-fill" id="fill${s.id}"></div>
+    </div>
+    <div class="short-volume-icon" id="volIcon${s.id}">
+      <div class="ic-wrap">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" id="volSvg${s.id}">
+          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+          <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+        </svg>
+      </div>
+    </div>
     <div class="short-info">
-      <div class="short-author">
-        <a href="/users/${s.username}" class="short-author-avatar">
+      <div class="short-author-row">
+        <a href="/users/${escapeHtml(s.username)}" class="short-author-avatar">
           <img src="/static/img/default_avatar.png" style="width:100%;height:100%;object-fit:cover;" alt="">
         </a>
         <span class="short-author-name">${escapeHtml(s.author)}</span>
       </div>
-      <div class="short-title-text">${escapeHtml(s.title)}</div>
-      <div class="short-tags">${s.tags.slice(0,5).map(t=>`<span class="short-tag">#${escapeHtml(t)}</span>`).join('')}</div>
+      <div class="short-title-txt">${escapeHtml(s.title)}</div>
+      <div class="short-tags-row">${s.tags.slice(0,5).map(t=>`<span class="short-tag">#${escapeHtml(t)}</span>`).join('')}</div>
     </div>
     <div class="short-actions">
-      <button class="short-action-btn" id="likeBtn${s.id}" onclick="likeShort(${s.id},this)">
-        <div class="icon-circle">❤️</div>
-        <span class="count" id="likeCount${s.id}">${s.likes}</span>
+      <button class="sa-btn" id="likeBtn${s.id}" onclick="likeShort(${s.id},this)" aria-label="Лайк">
+        <div class="ic">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+          </svg>
+        </div>
+        <span class="lbl" id="likeCount${s.id}">${s.likes}</span>
       </button>
-      <button class="short-action-btn" onclick="openComments(${s.id},'${escapeHtml(s.title).replace(/'/g,"\\'")}')">
-        <div class="icon-circle">💬</div><span class="count">0</span>
+      <button class="sa-btn" onclick="openComments(${s.id},this)" aria-label="Комментарии" data-title="${escapeHtml(s.title)}">
+        <div class="ic">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+          </svg>
+        </div>
+        <span class="lbl">0</span>
       </button>
-      <button class="short-action-btn" onclick="shareShort('/videos/watch/${s.slug}')">
-        <div class="icon-circle">↗</div><span class="count">Поделиться</span>
+      <button class="sa-btn" onclick="shareShort('/videos/watch/${escapeHtml(s.slug)}')" aria-label="Поделиться">
+        <div class="ic">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+          </svg>
+        </div>
+        <span class="lbl">Поделиться</span>
+      </button>
+      <button class="sa-btn" id="muteBtn${s.id}" onclick="toggleMute(${s.id},this)" aria-label="Звук">
+        <div class="ic">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" id="muteSvg${s.id}">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+            <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+            <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+          </svg>
+        </div>
+        <span class="lbl" id="muteLbl${s.id}">Звук</span>
       </button>
     </div>`;
+
   feed.insertBefore(div, sentinel);
-}
-
-function escapeHtml(t) {
-  const d = document.createElement('div');
-  d.appendChild(document.createTextNode(String(t||'')));
-  return d.innerHTML;
-}
-
-function getCsrfToken() {
-  return document.cookie.split(';').find(c=>c.trim().startsWith('csrf_token='))?.split('=')[1]||'';
 }
 </script>
 {% endblock %}

@@ -76,7 +76,11 @@ def create_app(config_name=None):
     @app.before_request
     def enforce_ban():
         from flask_login import current_user, logout_user
-        from flask import session, redirect, url_for, flash
+        from flask import session, redirect, url_for, flash, request as req
+        # Never intercept logout/login/static — would cause infinite redirect
+        exempt = ('/auth/logout', '/auth/login', '/auth/register', '/static')
+        if any(req.path.startswith(p) for p in exempt):
+            return
         try:
             if current_user.is_authenticated and current_user.is_banned:
                 reason = current_user.ban_reason or 'Нарушение правил'

@@ -111,11 +111,13 @@ def login():
     return render_template('auth/login.html')
 
 
-@auth_bp.route('/logout')
+@auth_bp.route('/logout', methods=['GET', 'POST'])
 def logout():
-    # FIX: Don't use @login_required — just handle gracefully if not logged in
-    if current_user.is_authenticated:
-        logout_user()
+    try:
+        if current_user.is_authenticated:
+            logout_user()
+    except Exception:
+        pass
     session.clear()
     flash('Вы вышли из системы.', 'info')
     return redirect(url_for('main.index'))
