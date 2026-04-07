@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}Подписки{% endblock %}
+{% block content %}
+<h1 class="section-title" style="margin-bottom:24px;">Мои <span style="color:var(--accent)">Подписки</span></h1>
+{% if videos.items %}
+<div class="video-grid">{% for video in videos.items %}{% include 'partials/video_card.html' %}{% endfor %}</div>
+{% else %}
+<div class="empty-state"><div class="empty-icon">📡</div><div class="empty-title">Нет новых видео</div><div class="empty-subtitle">Подпишитесь на каналы, чтобы видеть их видео здесь</div></div>
+{% endif %}
+{% endblock %}

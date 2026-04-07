@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}403 — Доступ запрещён{% endblock %}
+{% block content %}
+<div class="empty-state" style="min-height:60vh;display:flex;flex-direction:column;align-items:center;justify-content:center;">
+    <div style="font-family:var(--font-display);font-size:120px;color:var(--gold);opacity:0.3;line-height:1;">403</div>
+    <div class="empty-title">Доступ запрещён</div>
+    <div class="empty-subtitle">У вас нет прав для просмотра этой страницы</div>
+    <a href="{{ url_for('main.index') }}" class="btn-primary" style="margin-top:24px;">На главную</a>
+</div>
+{% endblock %}

@@ -1,0 +1,204 @@
+{% extends "base.html" %}
+{% block title %}Загрузить видео{% endblock %}
+
+{% block content %}
+<div class="upload-page">
+    <div class="upload-header">
+        <h1>Загрузить <span style="color:var(--accent)">Видео</span></h1>
+        <p style="color:var(--text-2);margin-top:8px;">Поддерживаются форматы: MP4, AVI, MOV, MKV, WEBM, FLV, WMV &bull; Максимум 2 ГБ</p>
+    </div>
+
+    <form method="POST" enctype="multipart/form-data" id="uploadForm">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        <!-- Drop Zone -->
+        <div class="drop-zone" id="dropZone">
+            <input type="file" name="video" id="videoFile" accept="video/*" required>
+            <div class="drop-content">
+                <div class="drop-icon">🎬</div>
+                <div class="drop-title">Перетащите видео сюда</div>
+                <div class="drop-subtitle">или нажмите для выбора файла</div>
+                <div class="drop-formats">MP4, AVI, MOV, MKV, WEBM, FLV, WMV — до 2 ГБ</div>
+            </div>
+        </div>
+
+        <!-- Upload Form Fields -->
+        <div class="upload-form" id="uploadFormSection" style="display:none">
+            
+            <div class="form-group">
+                <label class="form-label" for="videoTitle">Название *</label>
+                <input type="text" class="form-input" id="videoTitle" name="title" 
+                       placeholder="Дайте видео понятное название…" required maxlength="200">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="videoDesc">Описание</label>
+                <textarea class="form-textarea" id="videoDesc" name="description" 
+                          placeholder="Расскажите о вашем видео, добавьте ключевые слова…" rows="4"></textarea>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label" for="videoCat">Категория</label>
+                    <select class="form-select" id="videoCat" name="category_id">
+                        <option value="">— Без категории —</option>
+                        {% for cat in categories %}
+                        <option value="{{ cat.id }}">{{ cat.icon }} {{ cat.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="videoVis">Видимость</label>
+                    <select class="form-select" id="videoVis" name="visibility">
+                        <option value="public">🌍 Публичное</option>
+                        <option value="unlisted">🔗 По ссылке</option>
+                        <option value="private">🔒 Приватное</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="videoTags">Теги</label>
+                <input type="text" class="form-input" id="videoTags" name="tags" 
+                       placeholder="react, программирование, туториал (через запятую)">
+                <span class="form-hint">До 10 тегов, разделённых запятой</span>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Миниатюра (необязательно)</label>
+                <div style="display:flex;align-items:center;gap:16px;">
+                    <div id="thumbPreview" style="width:160px;height:90px;background:var(--bg-3);border-radius:var(--radius-sm);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;color:var(--text-3);font-size:24px;overflow:hidden;">🖼</div>
+                    <div>
+                        <input type="file" name="thumbnail" id="thumbFile" accept="image/*" style="display:none">
+                        <button type="button" class="btn-secondary" onclick="document.getElementById('thumbFile').click()" style="margin-bottom:8px;">
+                            Выбрать изображение
+                        </button>
+                        <div class="form-hint">JPG, PNG, GIF, WEBP &bull; Рекомендуемое: 1280×720</div>
+                        <div class="form-hint">Если не указать — создастся автоматически</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Upload Progress -->
+            <div class="upload-progress" id="uploadProgress">
+                <div style="display:flex;justify-content:space-between;margin-bottom:10px;font-size:14px;">
+                    <span id="progressLabel">Загрузка…</span>
+                    <span id="progressPct">0%</span>
+                </div>
+                <div class="progress-bar-track">
+                    <div class="progress-bar-fill" id="progressBar"></div>
+                </div>
+                <div style="font-size:12px;color:var(--text-3);margin-top:8px;" id="progressDetail"></div>
+            </div>
+
+            <div class="form-actions">
+                <button type="button" class="btn-secondary" onclick="resetForm()">Отмена</button>
+                <button type="submit" class="btn-primary" id="submitBtn">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+                    </svg>
+                    Загрузить видео
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+initUpload();
+
+// Thumbnail preview
+document.getElementById('thumbFile').addEventListener('change', function() {
+    if (this.files[0]) {
+        const reader = new FileReader();
+        reader.onload = e => {
+            const preview = document.getElementById('thumbPreview');
+            preview.innerHTML = `<img src="${e.target.result}" style="width:100%;height:100%;object-fit:cover;">`;
+        };
+        reader.readAsDataURL(this.files[0]);
+    }
+});
+
+// Upload with progress
+document.getElementById('uploadForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const file = document.getElementById('videoFile').files[0];
+    if (!file) { showToast('Выберите видеофайл.', 'error'); return; }
+    
+    const title = document.getElementById('videoTitle').value.trim();
+    if (!title) { showToast('Укажите название видео.', 'error'); return; }
+    
+    const formData = new FormData(this);
+    const xhr = new XMLHttpRequest();
+    
+    const progress = document.getElementById('uploadProgress');
+    const bar = document.getElementById('progressBar');
+    const pct = document.getElementById('progressPct');
+    const label = document.getElementById('progressLabel');
+    const detail = document.getElementById('progressDetail');
+    const submitBtn = document.getElementById('submitBtn');
+    
+    progress.style.display = 'block';
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Загрузка…';
+    
+    xhr.upload.addEventListener('progress', (e) => {
+        if (e.lengthComputable) {
+            const percent = Math.round(e.loaded / e.total * 100);
+            bar.style.width = percent + '%';
+            pct.textContent = percent + '%';
+            const loaded = (e.loaded / 1024 / 1024).toFixed(1);
+            const total = (e.total / 1024 / 1024).toFixed(1);
+            detail.textContent = `${loaded} МБ из ${total} МБ`;
+            if (percent === 100) {
+                label.textContent = 'Обработка видео…';
+                detail.textContent = 'Это может занять несколько минут';
+            }
+        }
+    });
+    
+    xhr.addEventListener('load', () => {
+        if (xhr.status === 200) {
+            window.location.href = xhr.responseURL;
+        } else {
+            try {
+                const data = JSON.parse(xhr.responseText);
+                showToast(data.error || 'Ошибка загрузки.', 'error');
+            } catch {
+                if (xhr.responseURL && xhr.responseURL !== window.location.href) {
+                    window.location.href = xhr.responseURL;
+                } else {
+                    showToast('Ошибка загрузки.', 'error');
+                }
+            }
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Загрузить видео';
+        }
+    });
+    
+    xhr.addEventListener('error', () => {
+        showToast('Ошибка соединения.', 'error');
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Загрузить видео';
+    });
+    
+    xhr.open('POST', this.action || window.location.href);
+    xhr.send(formData);
+});
+
+function resetForm() {
+    document.getElementById('uploadFormSection').style.display = 'none';
+    document.getElementById('videoFile').value = '';
+    document.querySelector('.drop-content').innerHTML = `
+        <div class="drop-icon">🎬</div>
+        <div class="drop-title">Перетащите видео сюда</div>
+        <div class="drop-subtitle">или нажмите для выбора файла</div>
+        <div class="drop-formats">MP4, AVI, MOV, MKV, WEBM, FLV, WMV — до 2 ГБ</div>
+    `;
+}
+</script>
+{% endblock %}

@@ -1,0 +1,522 @@
+{% extends "base.html" %}
+{% block title %}Роадмап{% endblock %}
+
+{% block extra_head %}
+<style>
+/* ─── Roadmap page styles ─── */
+.rm-hero {
+  text-align:center;
+  padding:56px 20px 48px;
+  position:relative;
+}
+.rm-hero::before {
+  content:'';
+  position:absolute;
+  inset:0;
+  background:radial-gradient(ellipse 60% 50% at 50% 0%,rgba(232,70,70,.1),transparent);
+  pointer-events:none;
+}
+
+/* Progress bar */
+.rm-progress-wrap {
+  max-width:700px;
+  margin:0 auto 56px;
+  background:var(--bg-1);
+  border:1px solid var(--border);
+  border-radius:var(--radius-lg);
+  padding:24px 28px;
+}
+.rm-progress-label {
+  display:flex;
+  justify-content:space-between;
+  font-size:13px;
+  color:var(--text-2);
+  margin-bottom:10px;
+}
+.rm-progress-bar {
+  height:10px;
+  background:var(--bg-3);
+  border-radius:999px;
+  overflow:hidden;
+}
+.rm-progress-fill {
+  height:100%;
+  background:linear-gradient(90deg,var(--accent),var(--purple));
+  border-radius:999px;
+  transition:width 1s cubic-bezier(.4,0,.2,1);
+}
+.rm-stats {
+  display:flex;
+  gap:24px;
+  margin-top:16px;
+  flex-wrap:wrap;
+}
+.rm-stat {
+  font-size:13px;
+  color:var(--text-2);
+}
+.rm-stat strong {
+  color:var(--text-0);
+  font-size:18px;
+  display:block;
+  font-family:var(--font-display);
+  letter-spacing:1px;
+}
+
+/* Phase columns */
+.rm-grid {
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(300px,1fr));
+  gap:20px;
+  margin-bottom:60px;
+}
+
+/* Phase card */
+.rm-phase {
+  background:var(--bg-1);
+  border:1px solid var(--border);
+  border-radius:var(--radius-lg);
+  overflow:hidden;
+  transition:border-color .2s;
+}
+.rm-phase:hover { border-color:rgba(255,255,255,.13); }
+
+.rm-phase-header {
+  padding:18px 20px 14px;
+  border-bottom:1px solid var(--border);
+  display:flex;
+  align-items:flex-start;
+  gap:14px;
+}
+.rm-phase-icon {
+  width:44px;
+  height:44px;
+  border-radius:50%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:22px;
+  flex-shrink:0;
+}
+.rm-phase-meta {
+  flex:1;
+  min-width:0;
+}
+.rm-phase-name {
+  font-weight:700;
+  font-size:15px;
+  margin-bottom:2px;
+}
+.rm-phase-period {
+  font-size:12px;
+  color:var(--text-3);
+}
+.rm-phase-status {
+  font-size:11px;
+  font-weight:700;
+  padding:3px 10px;
+  border-radius:4px;
+  white-space:nowrap;
+  flex-shrink:0;
+}
+
+/* Items */
+.rm-items { padding:12px 8px 12px; }
+.rm-item {
+  display:flex;
+  align-items:flex-start;
+  gap:12px;
+  padding:10px 12px;
+  border-radius:var(--radius-sm);
+  cursor:pointer;
+  transition:background .15s;
+  margin-bottom:2px;
+}
+.rm-item:hover { background:var(--bg-2); }
+.rm-item:last-child { margin-bottom:0; }
+
+.rm-check {
+  width:20px;
+  height:20px;
+  border-radius:50%;
+  border:2px solid;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  flex-shrink:0;
+  margin-top:1px;
+  font-size:11px;
+  font-weight:700;
+  transition:all .2s;
+}
+
+.rm-item-body { flex:1; min-width:0; }
+.rm-item-title {
+  font-size:13px;
+  font-weight:600;
+  margin-bottom:2px;
+  line-height:1.4;
+}
+.rm-item-sub {
+  font-size:12px;
+  color:var(--text-3);
+  line-height:1.5;
+}
+.rm-item-badge {
+  font-size:10px;
+  padding:2px 7px;
+  border-radius:3px;
+  font-weight:700;
+  white-space:nowrap;
+  flex-shrink:0;
+  margin-top:2px;
+  align-self:flex-start;
+}
+
+/* Timeline connector */
+.rm-connector {
+  display:flex;
+  justify-content:center;
+  padding:8px 0;
+  color:var(--text-3);
+  font-size:20px;
+}
+
+/* Phase status colours */
+.phase-done   { --ph:var(--green); }
+.phase-active { --ph:var(--accent); }
+.phase-next   { --ph:var(--blue); }
+.phase-future { --ph:var(--text-3); }
+
+/* Detailed feature section */
+.rm-feature-section { margin-bottom:48px; }
+.rm-feature-section h2 {
+  font-family:var(--font-display);
+  font-size:30px;
+  letter-spacing:3px;
+  margin-bottom:20px;
+}
+.rm-feature-grid {
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(260px,1fr));
+  gap:14px;
+}
+.rm-feature-card {
+  background:var(--bg-1);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  padding:18px 20px;
+  transition:border-color .2s;
+}
+.rm-feature-card:hover { border-color:rgba(255,255,255,.14); }
+.rm-feature-card .icon { font-size:28px; margin-bottom:10px; }
+.rm-feature-card .name { font-weight:700; font-size:14px; margin-bottom:6px; }
+.rm-feature-card .desc { font-size:13px; color:var(--text-2); line-height:1.6; }
+.rm-feature-card .status-strip {
+  margin-top:12px;
+  height:3px;
+  border-radius:999px;
+}
+
+/* Animated counters */
+@keyframes fadeUp { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+.rm-phase { animation:fadeUp .4s ease both; }
+.rm-phase:nth-child(1){animation-delay:.05s}
+.rm-phase:nth-child(2){animation-delay:.1s}
+.rm-phase:nth-child(3){animation-delay:.15s}
+.rm-phase:nth-child(4){animation-delay:.2s}
+.rm-phase:nth-child(5){animation-delay:.25s}
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Hero -->
+<div class="rm-hero">
+  <div style="display:inline-flex;align-items:center;gap:8px;background:rgba(232,70,70,.1);border:1px solid rgba(232,70,70,.25);border-radius:999px;padding:5px 16px;font-size:12px;font-weight:700;color:var(--accent);letter-spacing:1px;margin-bottom:20px;">
+    ROADMAP 2024–2025
+  </div>
+  <h1 style="font-family:var(--font-display);font-size:clamp(36px,7vw,72px);letter-spacing:4px;line-height:1;margin-bottom:14px;">
+    VideoHub <span style="color:var(--accent)">Роадмап</span>
+  </h1>
+  <p style="font-size:16px;color:var(--text-2);max-width:540px;margin:0 auto;line-height:1.7;">
+    Прозрачный план развития — что уже готово, что в работе и что планируется следующим. Разработчик: <strong style="color:var(--text-0);">Щербина Ярослав</strong>
+  </p>
+</div>
+
+<!-- Global progress -->
+<div class="rm-progress-wrap">
+  <div class="rm-progress-label">
+    <span>Общий прогресс разработки</span>
+    <span id="progressPct" style="font-weight:700;color:var(--accent);">62%</span>
+  </div>
+  <div class="rm-progress-bar">
+    <div class="rm-progress-fill" id="progressFill" style="width:0%"></div>
+  </div>
+  <div class="rm-stats">
+    <div class="rm-stat"><strong style="color:var(--green);">19</strong>задач выполнено</div>
+    <div class="rm-stat"><strong style="color:var(--accent);">5</strong>в процессе</div>
+    <div class="rm-stat"><strong style="color:var(--text-3);">7</strong>запланировано</div>
+    <div class="rm-stat"><strong>31</strong>всего задач</div>
+  </div>
+</div>
+
+<!-- Phase grid -->
+<div class="rm-grid">
+
+  <!-- Phase 1: Done -->
+  <div class="rm-phase phase-done">
+    <div class="rm-phase-header">
+      <div class="rm-phase-icon" style="background:rgba(66,211,146,.15);">✅</div>
+      <div class="rm-phase-meta">
+        <div class="rm-phase-name">Фаза 1 — Фундамент</div>
+        <div class="rm-phase-period">Выполнено</div>
+      </div>
+      <div class="rm-phase-status" style="background:rgba(66,211,146,.15);color:var(--green);">ГОТОВО</div>
+    </div>
+    <div class="rm-items">
+      {% for item,sub in [
+        ('Регистрация и авторизация','bcrypt, email-верификация, сброс пароля'),
+        ('Загрузка и хранение видео','Drag & drop, progress bar, до 2 ГБ'),
+        ('Видеоплеер HTML5','Мульти-качество 360p/720p/1080p'),
+        ('Автогенерация миниатюр','ffmpeg + Pillow fallback'),
+        ('Категории и теги','10 категорий, неограниченные теги'),
+        ('Поиск с фильтрами','По видео и пользователям'),
+        ('Лайки и дизлайки','Real-time обновление'),
+        ('Система комментариев','С ответами и модерацией'),
+        ('Подписки на каналы','С уведомлениями'),
+        ('Панель администратора','Пользователи, видео, отчёты'),
+        ('REST API с JWT','Полная документация'),
+        ('Баннер канала','Как на YouTube'),
+        ('Страницы О нас / Помощь / API','Полный контент'),
+      ] %}
+      <div class="rm-item">
+        <div class="rm-check" style="border-color:var(--green);background:rgba(66,211,146,.15);color:var(--green);">✓</div>
+        <div class="rm-item-body">
+          <div class="rm-item-title">{{ item }}</div>
+          <div class="rm-item-sub">{{ sub }}</div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Phase 2: Active (current sprint) -->
+  <div class="rm-phase phase-active" style="border-color:rgba(232,70,70,.25);">
+    <div class="rm-phase-header">
+      <div class="rm-phase-icon" style="background:rgba(232,70,70,.15);animation:pulse 2s ease-in-out infinite;">🔥</div>
+      <div class="rm-phase-meta">
+        <div class="rm-phase-name">Фаза 2 — Новые функции</div>
+        <div class="rm-phase-period">В разработке сейчас</div>
+      </div>
+      <div class="rm-phase-status" style="background:rgba(232,70,70,.15);color:var(--accent);">В РАБОТЕ</div>
+    </div>
+    <div class="rm-items">
+      {% for item,sub,pct in [
+        ('📱 Shorts — вертикальное видео','Swipe-лента, лайки, комментарии в drawer',90),
+        ('🔴 Прямые эфиры (стриминг)','RTMP ключ, live-чат, панель управления',85),
+        ('👥 Совместные каналы','Команда авторов, роли, приглашения',80),
+        ('🧠 Алгоритм рекомендаций v2','satisfaction × freshness × personalization',100),
+        ('Роадмап (эта страница)','Прозрачный план развития',100),
+      ] %}
+      <div class="rm-item">
+        <div class="rm-check" style="border-color:var(--accent);background:rgba(232,70,70,.12);color:var(--accent);">{{ pct }}%</div>
+        <div class="rm-item-body">
+          <div class="rm-item-title">{{ item }}</div>
+          <div class="rm-item-sub">{{ sub }}</div>
+          <div style="height:3px;background:var(--bg-3);border-radius:999px;margin-top:7px;overflow:hidden;">
+            <div style="height:100%;width:{{ pct }}%;background:var(--accent);border-radius:999px;"></div>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Phase 3: Next -->
+  <div class="rm-phase phase-next">
+    <div class="rm-phase-header">
+      <div class="rm-phase-icon" style="background:rgba(74,158,255,.15);">🤖</div>
+      <div class="rm-phase-meta">
+        <div class="rm-phase-name">Фаза 3 — AI-функции</div>
+        <div class="rm-phase-period">Следующий этап</div>
+      </div>
+      <div class="rm-phase-status" style="background:rgba(74,158,255,.15);color:var(--blue);">ДАЛЕЕ</div>
+    </div>
+    <div class="rm-items">
+      {% for item,sub in [
+        ('AI-субтитры (Whisper)','Автоматические на 50+ языках'),
+        ('Главы видео','Автоматическая разбивка по содержимому'),
+        ('AI-резюме видео','3 предложения о содержании'),
+        ('Поиск внутри видео','По тексту субтитров — прыжок к моменту'),
+        ('Умные авто-теги','AI определяет теги по содержимому'),
+      ] %}
+      <div class="rm-item">
+        <div class="rm-check" style="border-color:var(--blue);color:var(--blue);">○</div>
+        <div class="rm-item-body">
+          <div class="rm-item-title">{{ item }}</div>
+          <div class="rm-item-sub">{{ sub }}</div>
+        </div>
+        <span class="rm-item-badge" style="background:rgba(74,158,255,.12);color:var(--blue);">AI</span>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Phase 4: Future -->
+  <div class="rm-phase phase-future">
+    <div class="rm-phase-header">
+      <div class="rm-phase-icon" style="background:rgba(255,255,255,.05);">📊</div>
+      <div class="rm-phase-meta">
+        <div class="rm-phase-name">Фаза 4 — Аналитика</div>
+        <div class="rm-phase-period">Запланировано</div>
+      </div>
+      <div class="rm-phase-status" style="background:var(--bg-3);color:var(--text-3);">ПЛАН</div>
+    </div>
+    <div class="rm-items">
+      {% for item,sub in [
+        ('Realtime аналитика','Просмотры в реальном времени'),
+        ('Тепловые карты удержания','Где зрители уходят'),
+        ('A/B тест миниатюр','Две версии — лучшая побеждает'),
+        ('Откуда пришли зрители','Источники трафика'),
+        ('Export CSV/JSON','Полные сырые данные'),
+      ] %}
+      <div class="rm-item">
+        <div class="rm-check" style="border-color:var(--text-3);color:var(--text-3);">○</div>
+        <div class="rm-item-body">
+          <div class="rm-item-title">{{ item }}</div>
+          <div class="rm-item-sub">{{ sub }}</div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Phase 5: Future -->
+  <div class="rm-phase phase-future">
+    <div class="rm-phase-header">
+      <div class="rm-phase-icon" style="background:rgba(155,89,255,.1);">🌐</div>
+      <div class="rm-phase-meta">
+        <div class="rm-phase-name">Фаза 5 — Сообщество</div>
+        <div class="rm-phase-period">Долгосрочно</div>
+      </div>
+      <div class="rm-phase-status" style="background:rgba(155,89,255,.1);color:var(--purple);">ИДЕЯ</div>
+    </div>
+    <div class="rm-items">
+      {% for item,sub in [
+        ('Посты и опросы на канале','Как Community на YouTube'),
+        ('Клипирование моментов','Зрители вырезают лучшие моменты'),
+        ('Совместные плейлисты','Несколько авторов — один плейлист'),
+        ('Форумы под видео','Тематические треды'),
+        ('Значки и ачивменты','Геймификация для авторов'),
+      ] %}
+      <div class="rm-item">
+        <div class="rm-check" style="border-color:var(--text-3);color:var(--text-3);">○</div>
+        <div class="rm-item-body">
+          <div class="rm-item-title">{{ item }}</div>
+          <div class="rm-item-sub">{{ sub }}</div>
+        </div>
+        <span class="rm-item-badge" style="background:rgba(155,89,255,.1);color:var(--purple);">v3</span>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+</div><!-- /rm-grid -->
+
+<!-- Currently shipping — detailed cards -->
+<div class="rm-feature-section">
+  <h2>Что <span style="color:var(--accent)">сейчас</span> сделано в фазе 2</h2>
+  <div class="rm-feature-grid">
+
+    <div class="rm-feature-card">
+      <div class="icon">📱</div>
+      <div class="name">Shorts — вертикальное видео</div>
+      <div class="desc">
+        TikTok/Reels-стиль. Инфинити-скролл с автовоспроизведением, snap-прокруткой и IntersectionObserver.
+        Лайки, комментарии в боковом drawer, кнопка «Поделиться» с Web Share API.
+        Отдельная страница загрузки с portrait-превью.
+        AJAX подгрузка следующих роликов без перезагрузки.
+      </div>
+      <div class="status-strip" style="background:var(--green);"></div>
+    </div>
+
+    <div class="rm-feature-card">
+      <div class="icon">🔴</div>
+      <div class="name">Прямые эфиры (Live Streaming)</div>
+      <div class="desc">
+        RTMP stream key генерация. Настройка трансляции (название, категория, описание).
+        Панель управления — старт/стоп, счётчик зрителей в реальном времени.
+        Лайв-чат с polling каждые 3 секунды. Уведомления подписчикам при начале.
+        Симуляция в dev-режиме, в проде — nginx-rtmp.
+      </div>
+      <div class="status-strip" style="background:var(--accent);"></div>
+    </div>
+
+    <div class="rm-feature-card">
+      <div class="icon">👥</div>
+      <div class="name">Совместные каналы</div>
+      <div class="desc">
+        Канал с несколькими авторами: роли owner / admin / editor.
+        Приглашение по username. Добавление видео от любого участника.
+        Собственный аватар, баннер и описание канала.
+        Подписки на каналы (отдельно от подписок на пользователей).
+        Панель управления с вкладками.
+      </div>
+      <div class="status-strip" style="background:var(--blue);"></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Tech stack for new features -->
+<div style="background:var(--bg-1);border:1px solid var(--border);border-radius:var(--radius-lg);padding:32px;margin-bottom:40px;">
+  <h3 style="font-family:var(--font-display);font-size:24px;letter-spacing:2px;margin-bottom:16px;">
+    🛠 Технологии новых функций
+  </h3>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px;font-size:13px;">
+    {% for feature, stack in [
+      ('Shorts','IntersectionObserver API, scroll-snap, Web Share API, AJAX infinite scroll'),
+      ('Стриминг','RTMP protocol, nginx-rtmp-module, SSE/polling, stream keys'),
+      ('Live чат','Server-Sent Events / Long polling, rate limiting, bleach sanitization'),
+      ('AI субтитры (план)','OpenAI Whisper API, WebVTT format, SRT parsing'),
+      ('Рекомендации v2','Math.exp decay, Counter weights, SQLAlchemy aggregation'),
+    ] %}
+    <div style="background:var(--bg-2);border-radius:var(--radius-sm);padding:14px;">
+      <div style="font-weight:700;margin-bottom:6px;color:var(--text-0);">{{ feature }}</div>
+      <div style="color:var(--text-2);line-height:1.6;">{{ stack }}</div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- Legend -->
+<div style="display:flex;gap:20px;flex-wrap:wrap;margin-bottom:40px;font-size:13px;color:var(--text-2);">
+  <span style="display:flex;align-items:center;gap:8px;"><span style="width:14px;height:14px;border-radius:50%;background:var(--green);"></span>Выполнено</span>
+  <span style="display:flex;align-items:center;gap:8px;"><span style="width:14px;height:14px;border-radius:50%;background:var(--accent);"></span>В работе</span>
+  <span style="display:flex;align-items:center;gap:8px;"><span style="width:14px;height:14px;border-radius:50%;background:var(--blue);"></span>Следующий этап</span>
+  <span style="display:flex;align-items:center;gap:8px;"><span style="width:14px;height:14px;border-radius:50%;background:var(--text-3);"></span>Запланировано</span>
+  <span style="display:flex;align-items:center;gap:8px;"><span style="width:14px;height:14px;border-radius:50%;background:var(--purple);"></span>Идея на будущее</span>
+</div>
+
+<!-- Footer CTA -->
+<div style="text-align:center;padding:40px 20px;border-top:1px solid var(--border);">
+  <div style="font-family:var(--font-display);font-size:28px;letter-spacing:3px;margin-bottom:10px;">Есть идея?</div>
+  <p style="color:var(--text-2);margin-bottom:20px;">Напишите разработчику — лучшие идеи попадут в роадмап</p>
+  <a href="mailto:admin@videohub.com" class="btn-primary" style="padding:12px 28px;">✉ Предложить функцию</a>
+</div>
+
+<style>
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
+</style>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+// Animate progress bar on load
+window.addEventListener('load', () => {
+  setTimeout(() => {
+    document.getElementById('progressFill').style.width = '62%';
+  }, 300);
+});
+</script>
+{% endblock %}

@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}#{{ tag.name }}{% endblock %}
+{% block content %}
+<h1 class="section-title" style="margin-bottom:24px;">#<span style="color:var(--accent)">{{ tag.name }}</span></h1>
+{% if videos.items %}
+<div class="video-grid">{% for video in videos.items %}{% include 'partials/video_card.html' %}{% endfor %}</div>
+{% else %}
+<div class="empty-state"><div class="empty-icon">🏷</div><div class="empty-title">Видео с этим тегом не найдены</div></div>
+{% endif %}
+{% endblock %}

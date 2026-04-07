@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block title %}Прямые эфиры{% endblock %}
+
+{% block content %}
+<div class="section-header" style="margin-bottom:28px;">
+  <h1 class="section-title">🔴 Прямые <span>Эфиры</span></h1>
+  {% if current_user.is_authenticated %}
+  <a href="{{ url_for('streams.go_live') }}" class="btn-primary"
+     style="display:flex;align-items:center;gap:8px;">
+    <span style="width:8px;height:8px;background:#fff;border-radius:50%;animation:livepulse 1.2s ease-in-out infinite;"></span>
+    Выйти в эфир
+  </a>
+  {% endif %}
+</div>
+
+<style>
+@keyframes livepulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(1.4)} }
+.live-dot { display:inline-flex;align-items:center;gap:6px;background:var(--accent);color:#fff;font-size:11px;font-weight:700;padding:3px 9px;border-radius:4px;letter-spacing:.5px; }
+.live-dot::before { content:'';width:6px;height:6px;background:#fff;border-radius:50%;animation:livepulse 1.2s ease-in-out infinite; }
+</style>
+
+{% if live %}
+<div style="margin-bottom:40px;">
+  <div class="section-label" style="font-size:11px;letter-spacing:1.5px;color:var(--text-3);font-weight:700;text-transform:uppercase;margin-bottom:16px;">Сейчас в эфире</div>
+  <div class="video-grid">
+    {% for s in live %}
+    <a href="{{ url_for('streams.watch', stream_id=s.id) }}" class="video-card" style="text-decoration:none;">
+      <div class="video-thumb-wrap" style="background:#0d0d1a;">
+        {% if s.thumbnail %}
+        <img src="{{ url_for('videos.serve_thumbnail', filename=s.thumbnail) }}" class="video-thumb" alt="">
+        {% else %}
+        <div class="video-thumb-placeholder" style="font-size:36px;">📡</div>
+        {% endif %}
+        <span class="live-dot" style="position:absolute;top:8px;left:8px;">LIVE</span>
+        <span class="video-duration" style="background:rgba(0,0,0,.75);">
+          👁 {{ s.viewer_count }}
+        </span>
+      </div>
+      <div class="video-info">
+        <div class="video-title">{{ s.title }}</div>
+        <div class="video-meta">
+          <div class="video-author-thumb">
+            <img src="{{ url_for('static', filename='img/default_avatar.png') }}" alt="">
+          </div>
+          <div class="video-details">
+            <div class="video-author-name">{{ s.author.display_name or s.author.username }}</div>
+            <div class="video-stats">{{ s.started_at | timeago if s.started_at }}</div>
+          </div>
+        </div>
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+{% if recent %}
+<div class="section-label" style="font-size:11px;letter-spacing:1.5px;color:var(--text-3);font-weight:700;text-transform:uppercase;margin-bottom:16px;">Прошедшие эфиры</div>
+<div class="video-grid">
+  {% for s in recent %}
+  <div class="video-card">
+    <div class="video-thumb-wrap" style="background:#0d0d1a;">
+      {% if s.thumbnail %}
+      <img src="{{ url_for('videos.serve_thumbnail', filename=s.thumbnail) }}" class="video-thumb" alt="">
+      {% else %}
+      <div class="video-thumb-placeholder" style="font-size:36px;color:var(--text-3);">📹</div>
+      {% endif %}
+      <span class="video-duration">Завершён</span>
+    </div>
+    <div class="video-info">
+      <div class="video-title">{{ s.title }}</div>
+      <div class="video-meta">
+        <div class="video-details">
+          <div class="video-author-name">{{ s.author.display_name or s.author.username }}</div>
+          <div class="video-stats">Пик: {{ s.peak_viewers }} зрителей &bull; {{ s.ended_at | timeago if s.ended_at }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if not live and not recent %}
+<div class="empty-state">
+  <div class="empty-icon">📡</div>
+  <div class="empty-title">Нет активных эфиров</div>
+  <div class="empty-subtitle">Будьте первым — выйдите в прямой эфир!</div>
+  {% if current_user.is_authenticated %}
+  <a href="{{ url_for('streams.go_live') }}" class="btn-primary" style="margin-top:20px;display:inline-block;">Начать трансляцию</a>
+  {% endif %}
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,214 @@
+{% extends "base.html" %}
+{% block title %}Помощь{% endblock %}
+
+{% block content %}
+<div style="max-width:860px;margin:0 auto;">
+
+  <!-- Header -->
+  <div style="text-align:center;padding:48px 20px 40px;">
+    <div style="font-size:56px;margin-bottom:16px;">🛟</div>
+    <h1 style="font-family:var(--font-display);font-size:clamp(32px,6vw,56px);letter-spacing:4px;margin-bottom:12px;">
+      Центр <span style="color:var(--accent)">Помощи</span>
+    </h1>
+    <p style="font-size:16px;color:var(--text-2);max-width:500px;margin:0 auto;">
+      Ответы на частые вопросы, решение ошибок и инструкции по использованию VideoHub
+    </p>
+  </div>
+
+  <!-- Quick links -->
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-bottom:48px;">
+    {% for icon,label,anchor in [
+      ('🚀','Начало работы','getting-started'),
+      ('📤','Загрузка видео','upload-issues'),
+      ('🔑','Вход и аккаунт','auth-issues'),
+      ('▶️','Воспроизведение','playback-issues'),
+      ('⚠️','Коды ошибок','error-codes'),
+      ('📡','API','api-help')
+    ] %}
+    <a href="#{{ anchor }}" style="display:flex;align-items:center;gap:10px;padding:14px 16px;background:var(--bg-1);border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-weight:600;transition:all .2s;" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
+      <span style="font-size:22px;">{{ icon }}</span>{{ label }}
+    </a>
+    {% endfor %}
+  </div>
+
+  <!-- Section: Getting Started -->
+  <div id="getting-started" style="margin-bottom:48px;">
+    <h2 style="font-family:var(--font-display);font-size:28px;letter-spacing:2px;margin-bottom:20px;display:flex;align-items:center;gap:12px;">
+      <span style="color:var(--accent);">▶</span> Начало работы
+    </h2>
+
+    {% set faqs_start = [
+      ('Как зарегистрироваться?',
+       'Нажмите кнопку «Регистрация» в правом верхнем углу. Заполните форму: имя пользователя (3–50 символов, только латиница/цифры/_.-), email и пароль (мин. 8 символов с цифрой). После регистрации на почту придёт письмо с подтверждением — без него вход заблокирован.'),
+      ('Письмо подтверждения не пришло',
+       'Проверьте папку «Спам» или «Промоакции». Если письма нет совсем — убедитесь, что email введён верно. В режиме разработки (DEBUG=True) письма не отправляются, аккаунт подтверждается автоматически. Для перезапроса письма используйте форму входа — там появится соответствующая кнопка.'),
+      ('Как загрузить первое видео?',
+       'Войдите в аккаунт → кнопка «Загрузить» в шапке сайта. Перетащите файл в зону загрузки или нажмите на неё. Заполните название (обязательно), описание, выберите категорию и теги. После загрузки видео попадает в статус «Обрабатывается» — обычно 1–5 минут.'),
+      ('Как настроить профиль и канал?',
+       'Профиль → Настройки (меню аккаунта вверху справа). Там можно: загрузить аватар (рекомендуется 400×400px), добавить баннер канала (2560×1440px, как на YouTube), изменить отображаемое имя и описание.')
+    ] %}
+    {% for q,a in faqs_start %}
+    <div class="faq-item" style="border:1px solid var(--border);border-radius:var(--radius);margin-bottom:10px;overflow:hidden;">
+      <button onclick="toggleFaq(this)" style="width:100%;text-align:left;padding:16px 20px;font-size:15px;font-weight:600;display:flex;justify-content:space-between;align-items:center;background:var(--bg-1);color:var(--text-0);">
+        {{ q }}
+        <svg class="faq-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;transition:transform .25s;"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+      <div class="faq-body" style="display:none;padding:16px 20px;font-size:14px;line-height:1.75;color:var(--text-1);background:var(--bg-2);border-top:1px solid var(--border);">{{ a }}</div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Section: Upload Issues -->
+  <div id="upload-issues" style="margin-bottom:48px;">
+    <h2 style="font-family:var(--font-display);font-size:28px;letter-spacing:2px;margin-bottom:20px;display:flex;align-items:center;gap:12px;">
+      <span style="color:var(--accent);">▶</span> Проблемы с загрузкой
+    </h2>
+    {% set upload_faqs = [
+      ('Ошибка «Недопустимый формат файла»',
+       'VideoHub принимает: MP4, AVI, MOV, MKV, WEBM, FLV, WMV, M4V. Если у вас другой формат — конвертируйте через HandBrake (бесплатно) или ffmpeg: <code>ffmpeg -i input.xxx output.mp4</code>'),
+      ('Загрузка зависает или обрывается',
+       'Возможные причины: (1) файл превышает 2 ГБ — это максимальный размер; (2) нестабильное соединение — попробуйте снова; (3) VPN или прокси — отключите на время загрузки; (4) браузер — попробуйте Chrome или Firefox последней версии.'),
+      ('Видео долго обрабатывается',
+       'Обработка включает: извлечение метаданных, генерацию миниатюры и транскодирование (360p/720p). Для файла 1 ГБ это может занять 5–15 минут. Если прошло более 30 минут — обновите страницу. Если статус остался «Обрабатывается» — ffmpeg не установлен на сервере, видео доступно в исходном формате.'),
+      ('Миниатюра не генерируется',
+       'Требуется установленный ffmpeg на сервере. Если ffmpeg недоступен — создаётся заглушка (серый экран с иконкой). Вы всегда можете загрузить собственную миниатюру при редактировании видео. Рекомендуемый размер: 1280×720px (16:9), до 5 МБ.'),
+      ('Ошибка 413 — файл слишком большой',
+       'Максимальный размер файла — 2 ГБ. Если вы уверены что файл меньше — возможно Nginx ограничивает размер запроса. Администратор должен установить: <code>client_max_body_size 2048M;</code> в конфигурации Nginx.')
+    ] %}
+    {% for q,a in upload_faqs %}
+    <div class="faq-item" style="border:1px solid var(--border);border-radius:var(--radius);margin-bottom:10px;overflow:hidden;">
+      <button onclick="toggleFaq(this)" style="width:100%;text-align:left;padding:16px 20px;font-size:15px;font-weight:600;display:flex;justify-content:space-between;align-items:center;background:var(--bg-1);color:var(--text-0);">
+        {{ q }}
+        <svg class="faq-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;transition:transform .25s;"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+      <div class="faq-body" style="display:none;padding:16px 20px;font-size:14px;line-height:1.75;color:var(--text-1);background:var(--bg-2);border-top:1px solid var(--border);">{{ a | safe }}</div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Section: Auth Issues -->
+  <div id="auth-issues" style="margin-bottom:48px;">
+    <h2 style="font-family:var(--font-display);font-size:28px;letter-spacing:2px;margin-bottom:20px;display:flex;align-items:center;gap:12px;">
+      <span style="color:var(--accent);">▶</span> Вход и аккаунт
+    </h2>
+    {% set auth_faqs = [
+      ('Забыл пароль','Страница входа → «Забыли пароль?» → введите email → на почту придёт ссылка для сброса (действительна 1 час). Если письмо не приходит — проверьте спам.'),
+      ('Аккаунт заблокирован','Если при входе появляется сообщение о блокировке — обратитесь к администратору через email: admin@videohub.com. Укажите причину и имя пользователя.'),
+      ('Ошибка «Слишком много запросов» (429)','Защита от брутфорса: 10 попыток входа в минуту, 5 регистраций в час. Подождите 1–5 минут и повторите.'),
+      ('Не помню email','К сожалению, без email восстановление невозможно. Попробуйте все адреса, которые вы используете. В крайнем случае — создайте новый аккаунт.')
+    ] %}
+    {% for q,a in auth_faqs %}
+    <div class="faq-item" style="border:1px solid var(--border);border-radius:var(--radius);margin-bottom:10px;overflow:hidden;">
+      <button onclick="toggleFaq(this)" style="width:100%;text-align:left;padding:16px 20px;font-size:15px;font-weight:600;display:flex;justify-content:space-between;align-items:center;background:var(--bg-1);color:var(--text-0);">
+        {{ q }}
+        <svg class="faq-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;transition:transform .25s;"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+      <div class="faq-body" style="display:none;padding:16px 20px;font-size:14px;line-height:1.75;color:var(--text-1);background:var(--bg-2);border-top:1px solid var(--border);">{{ a }}</div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Section: Playback -->
+  <div id="playback-issues" style="margin-bottom:48px;">
+    <h2 style="font-family:var(--font-display);font-size:28px;letter-spacing:2px;margin-bottom:20px;display:flex;align-items:center;gap:12px;">
+      <span style="color:var(--accent);">▶</span> Воспроизведение
+    </h2>
+    {% set play_faqs = [
+      ('Видео не воспроизводится','(1) Убедитесь что видео прошло обработку — статус должен быть «опубликовано». (2) Проверьте кодек: браузеры лучше всего поддерживают H.264/MP4. (3) Попробуйте другой браузер. (4) Обновите драйверы видеокарты — помогает при декодировании 4K.'),
+      ('Видео тормозит или буферизируется','(1) Выберите качество пониже (360p) кликнув на видео. (2) Проверьте скорость интернета. (3) Закройте другие вкладки с видео. (4) Очистите кэш браузера.'),
+      ('Нет звука','(1) Проверьте громкость в плеере и системе. (2) Убедитесь что браузер не заглушён (иконка в табе). (3) Аудиодорожка могла не поддерживаться — попробуйте скачать файл.'),
+      ('Видео обрезается или некорректно отображается','Это может быть связано с нестандартным соотношением сторон. Плеер использует стандарт 16:9. Для вертикальных видео (9:16) рекомендуем конвертировать.')
+    ] %}
+    {% for q,a in play_faqs %}
+    <div class="faq-item" style="border:1px solid var(--border);border-radius:var(--radius);margin-bottom:10px;overflow:hidden;">
+      <button onclick="toggleFaq(this)" style="width:100%;text-align:left;padding:16px 20px;font-size:15px;font-weight:600;display:flex;justify-content:space-between;align-items:center;background:var(--bg-1);color:var(--text-0);">
+        {{ q }}
+        <svg class="faq-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;transition:transform .25s;"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+      <div class="faq-body" style="display:none;padding:16px 20px;font-size:14px;line-height:1.75;color:var(--text-1);background:var(--bg-2);border-top:1px solid var(--border);">{{ a }}</div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Section: Error Codes -->
+  <div id="error-codes" style="margin-bottom:48px;">
+    <h2 style="font-family:var(--font-display);font-size:28px;letter-spacing:2px;margin-bottom:20px;display:flex;align-items:center;gap:12px;">
+      <span style="color:var(--accent);">▶</span> Коды ошибок
+    </h2>
+    <div style="background:var(--bg-1);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;">
+      <table style="width:100%;border-collapse:collapse;">
+        <thead>
+          <tr style="background:var(--bg-2);">
+            <th style="padding:12px 16px;text-align:left;font-size:12px;letter-spacing:1px;color:var(--text-2);font-weight:700;text-transform:uppercase;width:80px;">Код</th>
+            <th style="padding:12px 16px;text-align:left;font-size:12px;letter-spacing:1px;color:var(--text-2);font-weight:700;text-transform:uppercase;">Название</th>
+            <th style="padding:12px 16px;text-align:left;font-size:12px;letter-spacing:1px;color:var(--text-2);font-weight:700;text-transform:uppercase;">Причина и решение</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for code,name,badge,desc in [
+            ('400','Bad Request','badge-warning','Некорректный запрос. Проверьте правильность заполнения формы или параметров.'),
+            ('403','Forbidden','badge-danger','Нет доступа. Вы не авторизованы или недостаточно прав для этого действия.'),
+            ('404','Not Found','badge-secondary','Страница не найдена. Видео удалено, ссылка неверна или опечатка в адресе.'),
+            ('413','Payload Too Large','badge-danger','Файл слишком большой. Максимальный размер: 2 ГБ. Сожмите или разделите файл.'),
+            ('429','Too Many Requests','badge-warning','Слишком много запросов. Подождите 1–5 минут — срабатывает rate limiting.'),
+            ('500','Internal Server Error','badge-danger','Ошибка сервера. Попробуйте позже. Если ошибка повторяется — сообщите администратору.'),
+            ('CSRF','CSRF Token Error','badge-warning','Устаревшая форма. Обновите страницу (F5) и попробуйте снова.'),
+          ] %}
+          <tr style="border-top:1px solid var(--border);">
+            <td style="padding:14px 16px;"><span class="badge {{ badge }}" style="font-family:var(--font-mono);">{{ code }}</span></td>
+            <td style="padding:14px 16px;font-size:14px;font-weight:600;">{{ name }}</td>
+            <td style="padding:14px 16px;font-size:13px;color:var(--text-2);">{{ desc }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Section: API Help -->
+  <div id="api-help" style="margin-bottom:48px;">
+    <h2 style="font-family:var(--font-display);font-size:28px;letter-spacing:2px;margin-bottom:20px;display:flex;align-items:center;gap:12px;">
+      <span style="color:var(--accent);">▶</span> Вопросы по API
+    </h2>
+    {% set api_faqs = [
+      ('Как получить API-токен?','POST /api/v1/auth/login с телом {"login":"...","password":"..."}. В ответе придёт JWT-токен. Используйте его в заголовке: Authorization: Bearer <TOKEN>. Токен действителен 24 часа.'),
+      ('Ошибка «Token expired»','Выполните повторный вход через /api/v1/auth/login для получения нового токена. В будущих версиях планируется refresh token.'),
+      ('Лимиты API','60 запросов/мин для чтения, 30 для поиска, 10 для авторизации. При превышении — HTTP 429. Используйте заголовок Retry-After для определения времени ожидания.'),
+      ('CORS и внешние домены','API поддерживает CORS для всех доменов (Access-Control-Allow-Origin: *). Для браузерных запросов с кук используйте credentials: include только с явно разрешённым доменом.')
+    ] %}
+    {% for q,a in api_faqs %}
+    <div class="faq-item" style="border:1px solid var(--border);border-radius:var(--radius);margin-bottom:10px;overflow:hidden;">
+      <button onclick="toggleFaq(this)" style="width:100%;text-align:left;padding:16px 20px;font-size:15px;font-weight:600;display:flex;justify-content:space-between;align-items:center;background:var(--bg-1);color:var(--text-0);">
+        {{ q }}
+        <svg class="faq-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;transition:transform .25s;"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+      <div class="faq-body" style="display:none;padding:16px 20px;font-size:14px;line-height:1.75;color:var(--text-1);background:var(--bg-2);border-top:1px solid var(--border);">{{ a }}</div>
+    </div>
+    {% endfor %}
+    <div style="margin-top:16px;">
+      <a href="{{ url_for('main.api_docs') }}" class="btn-primary">Полная документация API →</a>
+    </div>
+  </div>
+
+  <!-- Contact -->
+  <div style="background:var(--bg-1);border:1px solid var(--border);border-radius:var(--radius-lg);padding:32px;text-align:center;">
+    <div style="font-size:32px;margin-bottom:12px;">📬</div>
+    <h3 style="font-size:20px;font-weight:700;margin-bottom:8px;">Не нашли ответ?</h3>
+    <p style="color:var(--text-2);font-size:14px;margin-bottom:20px;">Напишите главному разработчику — Щербина Ярослав ответит в течение 24 часов.</p>
+    <a href="mailto:admin@videohub.com" class="btn-primary">✉ Написать администратору</a>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function toggleFaq(btn) {
+  const body = btn.nextElementSibling;
+  const arrow = btn.querySelector('.faq-arrow');
+  const isOpen = body.style.display !== 'none';
+  body.style.display = isOpen ? 'none' : 'block';
+  arrow.style.transform = isOpen ? '' : 'rotate(180deg)';
+}
+</script>
+{% endblock %}

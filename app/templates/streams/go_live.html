@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}Выйти в эфир{% endblock %}
+
+{% block content %}
+<div style="max-width:720px;margin:0 auto;">
+  <h1 style="font-family:var(--font-display);font-size:40px;letter-spacing:3px;margin-bottom:8px;">
+    🔴 Прямой <span style="color:var(--accent)">Эфир</span>
+  </h1>
+  <p style="color:var(--text-2);margin-bottom:32px;">
+    Настройте трансляцию, получите ключ потока и подключитесь через OBS или любой RTMP-клиент.
+  </p>
+
+  <form method="POST" style="display:flex;flex-direction:column;gap:18px;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <div class="form-group">
+      <label class="form-label">Название трансляции *</label>
+      <input type="text" class="form-input" name="title" required maxlength="200"
+             placeholder="Чем сегодня занимаемся?"
+             value="{{ stream.title if stream else '' }}">
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Описание</label>
+      <textarea class="form-textarea" name="description" rows="3"
+                placeholder="Расскажите зрителям о чём стрим...">{{ stream.description if stream else '' }}</textarea>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Категория</label>
+      <select class="form-select" name="category_id">
+        <option value="">— Без категории —</option>
+        {% for cat in categories %}
+        <option value="{{ cat.id }}"
+          {{ 'selected' if stream and stream.category_id == cat.id }}>
+          {{ cat.icon }} {{ cat.name }}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <button type="submit" class="btn-primary" style="align-self:flex-start;padding:11px 28px;">
+      💾 Сохранить настройки
+    </button>
+  </form>
+
+  {% if stream %}
+  <!-- Current stream info -->
+  <div style="margin-top:32px;background:var(--bg-1);border:1px solid var(--border);border-radius:var(--radius-lg);padding:28px;">
+    <h3 style="font-size:16px;font-weight:700;margin-bottom:20px;">Ваша текущая трансляция</h3>
+
+    <div style="margin-bottom:16px;">
+      <div class="form-label" style="margin-bottom:6px;">Статус</div>
+      <span class="badge {{ 'badge-danger' if stream.is_live() else 'badge-secondary' }}" style="font-size:13px;">
+        {{ '🔴 В эфире' if stream.is_live() else '⚫ Офлайн' }}
+      </span>
+    </div>
+
+    <a href="{{ url_for('streams.dashboard', stream_id=stream.id) }}" class="btn-primary">
+      🎛 Открыть панель управления
+    </a>
+  </div>
+  {% endif %}
+
+  <!-- Setup guide -->
+  <div style="margin-top:32px;background:rgba(74,158,255,.06);border:1px solid rgba(74,158,255,.2);border-radius:var(--radius-lg);padding:28px;">
+    <h3 style="font-size:16px;font-weight:700;margin-bottom:16px;color:var(--blue);">📖 Как настроить OBS</h3>
+    <ol style="display:flex;flex-direction:column;gap:10px;font-size:14px;color:var(--text-1);padding-left:20px;line-height:1.7;">
+      <li>Откройте OBS → Настройки → Вещание</li>
+      <li>Сервис: <strong>Другое</strong></li>
+      <li>URL: <code style="background:var(--bg-3);padding:2px 6px;border-radius:4px;color:var(--green);">rtmp://ваш-сервер:1935/live</code></li>
+      <li>Ключ потока: скопируйте из панели управления</li>
+      <li>Нажмите «Начать трансляцию» в OBS, затем «Старт» в панели VideoHub</li>
+    </ol>
+    <div style="margin-top:16px;font-size:13px;color:var(--text-3);">
+      💡 Для реального RTMP нужен nginx с модулем <code>nginx-rtmp-module</code>. 
+      В режиме разработки трансляция симулируется кнопкой в панели управления.
+    </div>
+  </div>
+</div>
+{% endblock %}

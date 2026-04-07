@@ -1,0 +1,211 @@
+{% extends "base.html" %}
+{% block title %}Войти{% endblock %}
+{% block body_class %}auth-body{% endblock %}
+
+{% block content %}
+<div class="auth-page">
+  <div class="auth-card">
+
+    <div class="auth-logo">
+      <div class="auth-logo-text">▶ VideoHub</div>
+    </div>
+
+    <h2 class="auth-title">С возвращением!</h2>
+    <p class="auth-subtitle">Войдите в свой аккаунт</p>
+
+    <form method="POST" class="auth-form" id="loginForm" novalidate>
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+      <!-- Login field -->
+      <div class="form-group">
+        <label class="form-label" for="loginInput">Логин или Email</label>
+        <div class="form-input-icon">
+          <svg class="input-icon" width="16" height="16" viewBox="0 0 24 24"
+               fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 1 0-16 0"/>
+          </svg>
+          <input type="text" class="form-input" name="login" id="loginInput"
+                 placeholder="username или email@example.com"
+                 value="{{ request.form.get('login', '') }}"
+                 required autocomplete="username">
+        </div>
+        <div class="field-error-msg" id="loginError" style="display:none;"></div>
+      </div>
+
+      <!-- Password field -->
+      <div class="form-group">
+        <label class="form-label" for="passwordInput">Пароль</label>
+        <div class="form-input-icon" style="position:relative;">
+          <svg class="input-icon" width="16" height="16" viewBox="0 0 24 24"
+               fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+          </svg>
+          <input type="password" class="form-input" name="password" id="passwordInput"
+                 placeholder="Ваш пароль"
+                 required autocomplete="current-password"
+                 style="padding-right:44px;">
+          <!-- Eye toggle button -->
+          <button type="button" class="password-toggle" id="pwToggle"
+                  aria-label="Показать/скрыть пароль"
+                  onclick="togglePassword('passwordInput', 'pwToggle')">
+            <!-- eye-on -->
+            <svg class="eye-on" width="16" height="16" viewBox="0 0 24 24"
+                 fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
+            <!-- eye-off -->
+            <svg class="eye-off" width="16" height="16" viewBox="0 0 24 24"
+                 fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
+              <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
+              <line x1="1" y1="1" x2="23" y2="23"/>
+            </svg>
+          </button>
+        </div>
+        <div class="field-error-msg" id="passwordError" style="display:none;"></div>
+      </div>
+
+      <!-- Remember me + Forgot password -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin:4px 0 0;">
+        <label class="form-checkbox">
+          <input type="checkbox" name="remember"
+                 {{ 'checked' if request.form.get('remember') }}>
+          Запомнить меня
+        </label>
+        <a href="{{ url_for('auth.forgot_password') }}"
+           style="font-size:13px;color:var(--red);">Забыли пароль?</a>
+      </div>
+
+      <!-- Submit -->
+      <button type="submit" class="auth-btn" id="loginSubmitBtn">
+        Войти
+      </button>
+    </form>
+
+    <div class="auth-footer">
+      Нет аккаунта? <a href="{{ url_for('auth.register') }}">Зарегистрироваться</a>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+/**
+ * Login page JS
+ * Fixes applied:
+ *  - Unified togglePassword signature (id, toggleBtnId)
+ *  - Loading state + duplicate-submit prevention
+ *  - Client-side required-field validation with visual feedback
+ *  - Auto-focus first empty field on error
+ */
+
+// ── Toggle password visibility ─────────────────────────────────
+function togglePassword(inputId, btnId) {
+  const input = document.getElementById(inputId);
+  const btn   = document.getElementById(btnId);
+  if (!input || !btn) return;
+
+  const isHidden = input.type === 'password';
+  input.type = isHidden ? 'text' : 'password';
+  btn.classList.toggle('visible', isHidden);
+  btn.setAttribute('aria-label', isHidden ? 'Скрыть пароль' : 'Показать пароль');
+}
+
+// ── Helpers ─────────────────────────────────────────────────────
+function setFieldError(fieldEl, msgEl, message) {
+  fieldEl.classList.add('input-error');
+  fieldEl.classList.remove('input-success');
+  msgEl.textContent = message;
+  msgEl.style.display = 'flex';
+}
+
+function clearFieldError(fieldEl, msgEl) {
+  fieldEl.classList.remove('input-error');
+  msgEl.style.display = 'none';
+  msgEl.textContent = '';
+}
+
+function setButtonLoading(btn, isLoading, originalText) {
+  if (isLoading) {
+    btn.disabled = true;
+    btn.classList.add('loading');
+    btn.innerHTML = '<span class="auth-btn-spinner"></span> Входим…';
+  } else {
+    btn.disabled = false;
+    btn.classList.remove('loading');
+    btn.textContent = originalText;
+  }
+}
+
+// ── Form validation ──────────────────────────────────────────────
+function validateLoginForm() {
+  const loginInput    = document.getElementById('loginInput');
+  const passwordInput = document.getElementById('passwordInput');
+  const loginError    = document.getElementById('loginError');
+  const passwordError = document.getElementById('passwordError');
+  let valid = true;
+
+  if (!loginInput.value.trim()) {
+    setFieldError(loginInput, loginError, 'Введите логин или email');
+    valid = false;
+  } else {
+    clearFieldError(loginInput, loginError);
+  }
+
+  if (!passwordInput.value) {
+    setFieldError(passwordInput, passwordError, 'Введите пароль');
+    valid = false;
+  } else {
+    clearFieldError(passwordInput, passwordError);
+  }
+
+  if (!valid) {
+    // Focus first invalid field
+    if (loginInput.classList.contains('input-error')) loginInput.focus();
+    else if (passwordInput.classList.contains('input-error')) passwordInput.focus();
+  }
+
+  return valid;
+}
+
+// ── Form submit ──────────────────────────────────────────────────
+(function () {
+  const form   = document.getElementById('loginForm');
+  const btn    = document.getElementById('loginSubmitBtn');
+  if (!form || !btn) return;
+
+  // Clear error style on input
+  ['loginInput', 'passwordInput'].forEach(id => {
+    const el  = document.getElementById(id);
+    const err = document.getElementById(id.replace('Input', 'Error'));
+    if (el && err) el.addEventListener('input', () => clearFieldError(el, err));
+  });
+
+  form.addEventListener('submit', function (e) {
+    // 1. Prevent duplicate submission
+    if (btn.disabled) { e.preventDefault(); return; }
+
+    // 2. Client-side validation
+    if (!validateLoginForm()) {
+      e.preventDefault();
+      return;
+    }
+
+    // 3. Show loading state
+    setButtonLoading(btn, true, 'Войти');
+    // Safety reset: restore button if server takes too long
+    setTimeout(() => setButtonLoading(btn, false, 'Войти'), 15000);
+  });
+})();
+
+// Auto-focus login field if empty (UX)
+document.addEventListener('DOMContentLoaded', () => {
+  const loginInput = document.getElementById('loginInput');
+  if (loginInput && !loginInput.value) loginInput.focus();
+});
+</script>
+{% endblock %}

@@ -1,0 +1,42 @@
+{% set v = video %}
+<div class="video-card fade-up" onclick="window.location.href='{{ url_for('videos.watch', slug=v.slug) }}'">
+    <div class="video-thumb-wrap">
+        {% if v.thumbnail %}
+        <img src="{{ url_for('videos.serve_thumbnail', filename=v.thumbnail) }}"
+             alt="{{ v.title }}" class="video-thumb" loading="lazy"
+             onerror="this.parentElement.innerHTML='<div class=\'video-thumb-placeholder\'>▶</div>'">
+        {% else %}
+        <div class="video-thumb-placeholder">▶</div>
+        {% endif %}
+        <span class="video-duration">{{ v.duration_str() }}</span>
+        {% if v.is_short %}
+        <span class="video-short-badge">SHORT</span>
+        {% endif %}
+        {% if v.status == 'processing' %}
+        <div style="position:absolute;inset:0;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;">
+            <div style="font-size:24px;">⏳</div>
+            <div style="font-size:11px;color:var(--gold);font-weight:600;">Обработка...</div>
+        </div>
+        {% endif %}
+    </div>
+    <div class="video-info">
+        <div class="video-title">{{ v.title }}</div>
+        <div class="video-meta">
+            <a href="{{ url_for('users.profile', username=v.author.username) }}"
+               class="video-author-thumb" onclick="event.stopPropagation()">
+                <img src="{{ url_for('static', filename='uploads/avatars/' + v.author.avatar) if v.author.avatar and v.author.avatar != 'default_avatar.png' else url_for('static', filename='img/default_avatar.png') }}"
+                     alt="{{ v.author.username }}"
+                     onerror="this.src='{{ url_for('static', filename='img/default_avatar.png') }}'">
+            </a>
+            <div class="video-details">
+                <a href="{{ url_for('users.profile', username=v.author.username) }}"
+                   class="video-author-name" onclick="event.stopPropagation()">
+                    {{ v.author.display_name or v.author.username }}
+                </a>
+                <div class="video-stats">
+                    {{ v.views | format_views }} просм. &bull; {{ v.published_at | timeago if v.published_at }}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

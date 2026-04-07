@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Уведомления{% endblock %}
+{% block content %}
+<div style="max-width:700px;margin:0 auto;">
+    <h1 style="font-family:var(--font-display);font-size:36px;letter-spacing:3px;margin-bottom:24px;">
+        Уведомления
+    </h1>
+    {% if notifications.items %}
+    <div style="display:flex;flex-direction:column;gap:8px;">
+        {% for notif in notifications.items %}
+        <div style="display:flex;align-items:flex-start;gap:14px;padding:16px;background:var(--bg-1);border:1px solid var(--border);border-radius:var(--radius);{{ 'border-left:3px solid var(--accent);' if not notif.is_read }}">
+            <div style="width:36px;height:36px;border-radius:50%;background:var(--bg-3);overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:18px;">
+                {% if notif.type == 'like' %}👍
+                {% elif notif.type == 'comment' %}💬
+                {% elif notif.type == 'subscribe' %}❤️
+                {% elif notif.type == 'upload' %}🎬
+                {% else %}🔔{% endif %}
+            </div>
+            <div style="flex:1;">
+                <div style="font-size:14px;line-height:1.5;">{{ notif.message }}</div>
+                <div style="font-size:12px;color:var(--text-3);margin-top:4px;">{{ notif.created_at | timeago }}</div>
+            </div>
+            {% if notif.url %}
+            <a href="{{ notif.url }}" class="btn-secondary" style="font-size:12px;padding:5px 12px;flex-shrink:0;">Открыть</a>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    {% if notifications.pages > 1 %}
+    <div class="pagination">
+        {% for p in notifications.iter_pages() %}
+        {% if p %}<a href="{{ url_for('users.notifications', page=p) }}" class="page-btn {{ 'active' if p == notifications.page }}">{{ p }}</a>
+        {% else %}<span class="page-ellipsis">…</span>{% endif %}
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% else %}
+    <div class="empty-state"><div class="empty-icon">🔔</div><div class="empty-title">Нет уведомлений</div></div>
+    {% endif %}
+</div>
+{% endblock %}

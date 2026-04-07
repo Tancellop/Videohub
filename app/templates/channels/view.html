@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% block title %}{{ ch.name }}{% endblock %}
+
+{% block content %}
+<!-- Banner -->
+<div style="height:220px;background:linear-gradient(135deg,var(--bg-2),var(--bg-3));border-radius:var(--radius-lg);margin-bottom:0;overflow:hidden;position:relative;">
+  {% if ch.banner %}
+  <img src="{{ url_for('channels.serve_banner', filename=ch.banner) }}"
+       style="width:100%;height:100%;object-fit:cover;" alt="">
+  {% endif %}
+  <div style="position:absolute;inset:0;background:linear-gradient(to top,var(--bg-0),transparent 60%);"></div>
+</div>
+
+<!-- Header -->
+<div style="display:flex;align-items:flex-end;gap:20px;padding:0 0 24px;margin-top:-50px;flex-wrap:wrap;">
+  <div style="width:100px;height:100px;border-radius:50%;border:4px solid var(--bg-0);overflow:hidden;background:var(--bg-2);flex-shrink:0;">
+    {% if ch.avatar %}
+    <img src="{{ url_for('channels.serve_avatar', filename=ch.avatar) }}"
+         style="width:100%;height:100%;object-fit:cover;" alt="">
+    {% else %}
+    <div style="width:100%;height:100%;background:linear-gradient(135deg,var(--accent),var(--purple));display:flex;align-items:center;justify-content:center;font-family:var(--font-display);font-size:40px;color:#fff;">
+      {{ ch.name[0].upper() }}
+    </div>
+    {% endif %}
+  </div>
+
+  <div style="flex:1;padding-bottom:8px;">
+    <h1 style="font-family:var(--font-display);font-size:34px;letter-spacing:2px;margin-bottom:4px;">
+      {{ ch.name }}
+      {% if ch.is_verified %}
+      <span style="color:var(--blue);font-size:22px;" title="Верифицирован">✓</span>
+      {% endif %}
+    </h1>
+    <div style="font-size:14px;color:var(--text-2);margin-bottom:10px;">
+      Создан: {{ ch.owner.display_name or ch.owner.username }} &bull;
+      {{ ch.subscriber_count() | format_views }} подписчиков &bull;
+      {{ ch.video_count() }} видео &bull;
+      {{ ch.members | length }} участников
+    </div>
+    {% if ch.description %}
+    <div style="font-size:13px;color:var(--text-2);">{{ ch.description }}</div>
+    {% endif %}
+  </div>
+
+  <div style="display:flex;gap:10px;padding-bottom:8px;">
+    {% if current_user.is_authenticated and user_role %}
+    <a href="{{ url_for('channels.manage', slug=ch.slug) }}" class="btn-secondary">⚙ Управление</a>
+    {% endif %}
+    {% if current_user.is_authenticated %}
+    <button onclick="toggleSub('{{ ch.slug }}', this)"
+            class="btn-subscribe {{ 'subscribed' if is_subscribed else '' }}" id="subBtn">
+      {{ 'Отписаться' if is_subscribed else 'Подписаться' }}
+    </button>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Members strip -->
+<div style="display:flex;align-items:center;gap:8px;margin-bottom:28px;flex-wrap:wrap;">
+  <span style="font-size:13px;color:var(--text-3);">Команда:</span>
+  {% for m in ch.members[:8] %}
+  <a href="{{ url_for('users.profile', username=m.user.username) }}"
+     title="{{ m.user.display_name or m.user.username }} ({{ m.role }})"
+     style="width:32px;height:32px;border-radius:50%;overflow:hidden;border:2px solid var(--bg-0);background:var(--bg-3);">
+    <img src="{{ url_for('static', filename='img/default_avatar.png') }}"
+         style="width:100%;height:100%;object-fit:cover;" alt="">
+  </a>
+  {% endfor %}
+  {% if ch.members | length > 8 %}
+  <span style="font-size:12px;color:var(--text-3);">+{{ ch.members|length - 8 }} ещё</span>
+  {% endif %}
+</div>
+
+<!-- Videos -->
+{% if cvs.items %}
+<div class="video-grid">
+  {% for cv in cvs.items %}
+  {% set video = cv.video %}
+  <div class="video-card" onclick="window.location='{{ url_for('videos.watch', slug=video.slug) }}'">
+    <div class="video-thumb-wrap">
+      {% if video.thumbnail %}
+      <img src="{{ url_for('videos.serve_thumbnail', filename=video.thumbnail) }}"
+           class="video-thumb" alt="" loading="lazy">
+      {% else %}
+      <div class="video-thumb-placeholder">▶</div>
+      {% endif %}
+      <span class="video-duration">{{ video.duration_str() }}</span>
+    </div>
+    <div class="video-info">
+      <div class="video-title">{{ video.title }}</div>
+      <div class="video-meta">
+        <div class="video-details">
+          <div class="video-author-name">
+            Загрузил {{ cv.poster.display_name or cv.poster.username }}
+          </div>
+          <div class="video-stats">{{ video.views | format_views }} просм. &bull; {{ cv.posted_at | timeago }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+{% if cvs.pages > 1 %}
+<div class="pagination" style="margin-top:32px;">
+  {% for p in cvs.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+  {% if p %}
+  <a href="{{ url_for('channels.view', slug=ch.slug, page=p) }}"
+     class="page-btn {{ 'active' if p == cvs.page }}">{{ p }}</a>
+  {% else %}<span class="page-ellipsis">…</span>{% endif %}
+  {% endfor %}
+</div>
+{% endif %}
+
+{% else %}
+<div class="empty-state">
+  <div class="empty-icon">🎬</div>
+  <div class="empty-title">Видео пока нет</div>
+  {% if user_role %}
+  <div class="empty-subtitle">Добавьте видео через <a href="{{ url_for('channels.manage', slug=ch.slug) }}">панель управления</a></div>
+  {% endif %}
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+async function toggleSub(slug, btn) {
+  const data = await apiCall(`/channels/${slug}/subscribe`, 'POST');
+  if (data.action) {
+    const isSub = data.action === 'subscribed';
+    btn.textContent = isSub ? 'Отписаться' : 'Подписаться';
+    btn.classList.toggle('subscribed', isSub);
+    showToast(isSub ? 'Подписались на канал!' : 'Отписались от канала.');
+  }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+{% block title %}{{ user.display_name or user.username }}{% endblock %}
+
+{% block content %}
+<!-- Profile Banner -->
+<div class="profile-banner" style="margin-bottom:0;">
+    {% if user.banner %}
+    <img src="{{ url_for('users.serve_banner', filename=user.banner) }}" alt="Banner"
+         style="width:100%;height:100%;object-fit:cover;">
+    {% endif %}
+</div>
+
+<!-- Profile Header -->
+<div class="profile-header">
+    <div class="profile-avatar-wrap">
+        <img src="{{ url_for('static', filename='uploads/avatars/' + user.avatar) if user.avatar and user.avatar != 'default_avatar.png' else url_for('static', filename='img/default_avatar.png') }}"
+             alt="{{ user.username }}" class="profile-avatar"
+             onerror="this.src='{{ url_for('static', filename='img/default_avatar.png') }}'">
+    </div>
+    <div class="profile-info">
+        <div class="profile-name">{{ user.display_name or user.username }}</div>
+        <div class="profile-username">@{{ user.username }}</div>
+        <div class="profile-stats">
+            <div class="profile-stat">
+                <strong>{{ user.subscriber_count() | format_views }}</strong>
+                <span>подписчиков</span>
+            </div>
+            <div class="profile-stat">
+                <strong>{{ user.video_count() }}</strong>
+                <span>видео</span>
+            </div>
+            <div class="profile-stat">
+                <strong>{{ user.total_views() | format_views }}</strong>
+                <span>просмотров</span>
+            </div>
+        </div>
+    </div>
+    <div class="profile-actions">
+        {% if current_user.is_authenticated and current_user.id != user.id %}
+        <button class="btn-subscribe {{ 'subscribed' if is_subscribed else '' }}" 
+                id="subscribeBtn"
+                onclick="handleSubscribe({{ user.id }}, this)">
+            {{ 'Отписаться' if is_subscribed else 'Подписаться' }}
+        </button>
+        {% elif current_user.is_authenticated and current_user.id == user.id %}
+        <a href="{{ url_for('users.settings') }}" class="btn-secondary">
+            ✏ Редактировать профиль
+        </a>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Bio -->
+{% if user.bio %}
+<div style="padding:0 20px 20px;color:var(--text-2);font-size:14px;max-width:600px;">
+    {{ user.bio }}
+</div>
+{% endif %}
+
+<!-- Profile Tabs -->
+<div class="profile-tabs">
+    <a href="{{ url_for('users.profile', username=user.username, tab='videos') }}" 
+       class="profile-tab {% if tab == 'videos' %}active{% endif %}">Видео ({{ user.video_count() }})</a>
+    <a href="{{ url_for('users.profile', username=user.username, tab='playlists') }}" 
+       class="profile-tab {% if tab == 'playlists' %}active{% endif %}">Плейлисты</a>
+    <a href="{{ url_for('users.profile', username=user.username, tab='about') }}" 
+       class="profile-tab {% if tab == 'about' %}active{% endif %}">О канале</a>
+</div>
+
+<!-- Tab Content -->
+{% if tab == 'videos' %}
+    {% if videos.items %}
+    <div class="video-grid">
+        {% for video in videos.items %}
+        {% include 'partials/video_card.html' %}
+        {% endfor %}
+    </div>
+    
+    {% if videos.pages > 1 %}
+    <div class="pagination">
+        {% for p in videos.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+        {% if p %}
+        <a href="{{ url_for('users.profile', username=user.username, page=p, tab='videos') }}" 
+           class="page-btn {% if p == videos.page %}active{% endif %}">{{ p }}</a>
+        {% else %}<span class="page-ellipsis">…</span>{% endif %}
+        {% endfor %}
+    </div>
+    {% endif %}
+    
+    {% else %}
+    <div class="empty-state">
+        <div class="empty-icon">🎬</div>
+        <div class="empty-title">Нет видео</div>
+        <div class="empty-subtitle">
+            {% if current_user.is_authenticated and current_user.id == user.id %}
+            <a href="{{ url_for('videos.upload') }}" class="btn-primary" style="margin-top:16px;display:inline-block;">Загрузить первое видео</a>
+            {% else %}
+            Этот канал пока не загружал видео
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
+{% elif tab == 'about' %}
+    <div style="max-width:600px;padding:8px 0;">
+        <div style="background:var(--bg-1);border:1px solid var(--border);border-radius:var(--radius);padding:24px;">
+            <h3 style="font-size:16px;font-weight:700;margin-bottom:16px;">О канале</h3>
+            {% if user.bio %}
+            <p style="color:var(--text-1);line-height:1.7;">{{ user.bio }}</p>
+            {% else %}
+            <p style="color:var(--text-3);">Описание не указано.</p>
+            {% endif %}
+            <div style="margin-top:20px;padding-top:20px;border-top:1px solid var(--border);">
+                <div style="font-size:13px;color:var(--text-2);margin-bottom:8px;">
+                    📅 Зарегистрирован {{ user.created_at | format_date }}
+                </div>
+                <div style="font-size:13px;color:var(--text-2);">
+                    👁 Итого просмотров: {{ user.total_views() | format_views }}
+                </div>
+            </div>
+        </div>
+    </div>
+
+{% elif tab == 'playlists' %}
+    {% if playlists %}
+    <div class="video-grid">
+        {% for playlist in playlists %}
+        <div class="video-card" style="cursor:default;">
+            <div class="video-thumb-wrap" style="background:var(--bg-3);">
+                <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:48px;color:var(--text-3);">📋</div>
+                <span class="video-duration">{{ playlist.items.count() }} видео</span>
+            </div>
+            <div class="video-info">
+                <div class="video-title">{{ playlist.title }}</div>
+                {% if playlist.description %}
+                <div style="font-size:12px;color:var(--text-2);margin-top:4px;">{{ playlist.description | truncate(80) }}</div>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <div class="empty-icon">📋</div>
+        <div class="empty-title">Нет плейлистов</div>
+    </div>
+    {% endif %}
+{% endif %}
+
+{% endblock %}

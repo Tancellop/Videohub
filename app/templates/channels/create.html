@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Создать канал{% endblock %}
+{% block content %}
+<div style="max-width:620px;margin:0 auto;">
+  <h1 style="font-family:var(--font-display);font-size:38px;letter-spacing:3px;margin-bottom:8px;">
+    👥 Создать <span style="color:var(--accent)">Канал</span>
+  </h1>
+  <p style="color:var(--text-2);margin-bottom:28px;">Совместный канал позволяет нескольким авторам публиковать видео под одним брендом.</p>
+
+  <form method="POST" enctype="multipart/form-data" style="display:flex;flex-direction:column;gap:18px;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <div class="form-group">
+      <label class="form-label">Название канала *</label>
+      <input type="text" class="form-input" name="name" required minlength="2" maxlength="100"
+             placeholder="Название вашей команды или бренда">
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Описание</label>
+      <textarea class="form-textarea" name="description" rows="3"
+                placeholder="Расскажите о чём ваш канал…" maxlength="500"></textarea>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Аватар канала</label>
+      <div style="display:flex;align-items:center;gap:14px;">
+        <div id="avatarPreview" style="width:64px;height:64px;border-radius:50%;background:var(--bg-3);border:1px solid var(--border);overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:28px;">
+          👥
+        </div>
+        <div>
+          <input type="file" name="avatar" id="avatarInput" accept="image/*" style="display:none;"
+                 onchange="previewImg(this,'avatarPreview')">
+          <button type="button" class="btn-secondary" onclick="document.getElementById('avatarInput').click()">Выбрать</button>
+          <div class="form-hint" style="margin-top:5px;">JPG, PNG — рекомендуется 400×400px</div>
+        </div>
+      </div>
+    </div>
+
+    <button type="submit" class="btn-primary" style="align-self:flex-start;padding:12px 28px;">
+      ✨ Создать канал
+    </button>
+  </form>
+</div>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+function previewImg(input, previewId) {
+  if (!input.files[0]) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const el = document.getElementById(previewId);
+    el.innerHTML = `<img src="${e.target.result}" style="width:100%;height:100%;object-fit:cover;">`;
+  };
+  reader.readAsDataURL(input.files[0]);
+}
+</script>
+{% endblock %}

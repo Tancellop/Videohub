@@ -1,0 +1,275 @@
+{% extends "base.html" %}
+{% block title %}API Документация{% endblock %}
+
+{% block content %}
+<div style="max-width:960px;margin:0 auto;">
+
+  <!-- Header -->
+  <div style="padding:48px 20px 40px;text-align:center;">
+    <div style="display:inline-flex;align-items:center;gap:10px;background:rgba(66,211,146,.1);border:1px solid rgba(66,211,146,.3);border-radius:999px;padding:6px 16px;font-size:12px;font-weight:700;color:var(--green);letter-spacing:1px;margin-bottom:20px;">
+      ● LIVE  API v1
+    </div>
+    <h1 style="font-family:var(--font-display);font-size:clamp(32px,6vw,58px);letter-spacing:4px;margin-bottom:12px;">
+      REST <span style="color:var(--accent)">API</span>
+    </h1>
+    <p style="color:var(--text-2);font-size:16px;max-width:520px;margin:0 auto;">
+      Полная документация VideoHub API. Базовый URL:
+      <code style="color:var(--green);background:var(--bg-2);padding:2px 8px;border-radius:4px;">/api/v1</code>
+    </p>
+  </div>
+
+  <!-- Layout: sidebar + content -->
+  <div style="display:grid;grid-template-columns:200px 1fr;gap:32px;align-items:start;">
+
+    <!-- Sidebar nav -->
+    <div style="position:sticky;top:calc(var(--nav-h) + 16px);background:var(--bg-1);border:1px solid var(--border);border-radius:var(--radius);padding:16px 0;">
+      {% for section,anchor in [
+        ('Авторизация','auth'),('Видео','videos'),('Пользователи','users'),
+        ('Категории','categories'),('Поиск','search'),('Ошибки','errors')
+      ] %}
+      <a href="#{{ anchor }}" style="display:block;padding:9px 16px;font-size:13px;color:var(--text-2);transition:all .15s;" onmouseover="this.style.color='var(--text-0)';this.style.background='var(--bg-2)'" onmouseout="this.style.color='var(--text-2)';this.style.background=''">
+        {{ section }}
+      </a>
+      {% endfor %}
+    </div>
+
+    <!-- Main content -->
+    <div>
+
+      <!-- Auth info -->
+      <div style="background:rgba(244,185,66,.08);border:1px solid rgba(244,185,66,.25);border-radius:var(--radius);padding:20px;margin-bottom:32px;font-size:14px;line-height:1.7;color:var(--text-1);">
+        <strong style="color:var(--gold);">🔑 Аутентификация:</strong>
+        Для защищённых эндпоинтов передавайте JWT-токен в заголовке:
+        <code style="display:block;margin-top:8px;background:var(--bg-0);padding:10px 14px;border-radius:6px;color:var(--green);font-size:13px;">Authorization: Bearer &lt;TOKEN&gt;</code>
+      </div>
+
+      <!-- ── AUTH ── -->
+      <div id="auth" style="margin-bottom:48px;">
+        <h2 style="font-family:var(--font-display);font-size:26px;letter-spacing:2px;margin-bottom:20px;padding-bottom:12px;border-bottom:1px solid var(--border);">
+          Авторизация
+        </h2>
+
+        {% set auth_endpoints = [
+          ('POST','/auth/login','Вход и получение JWT','Нет','{"login":"admin","password":"Admin123!"}','{"token":"eyJ...","user":{...}}'),
+          ('GET','/auth/me','Данные текущего пользователя','Да','—','{"id":1,"username":"admin",...}'),
+        ] %}
+        {% for method,path,desc,auth_req,body,resp in auth_endpoints %}
+        {{ endpoint_card(method,path,desc,auth_req,body,resp) }}
+        {% endfor %}
+      </div>
+
+      <!-- ── VIDEOS ── -->
+      <div id="videos" style="margin-bottom:48px;">
+        <h2 style="font-family:var(--font-display);font-size:26px;letter-spacing:2px;margin-bottom:20px;padding-bottom:12px;border-bottom:1px solid var(--border);">
+          Видео
+        </h2>
+
+        <!-- GET /videos -->
+        {% call endpoint_block('GET','/videos','Список видео','Нет') %}
+        <div style="margin-top:12px;">
+          <div style="font-size:12px;color:var(--text-2);font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Параметры запроса</div>
+          <table style="width:100%;border-collapse:collapse;font-size:13px;">
+            {% for param,type_,default,desc in [
+              ('page','integer','1','Номер страницы'),
+              ('per_page','integer','12','Результатов на страницу (макс. 50)'),
+              ('sort','string','latest','Сортировка: latest | popular | trending'),
+              ('category','string','—','Slug категории (например: gaming)'),
+              ('q','string','—','Текстовый поиск по названию/описанию'),
+            ] %}
+            <tr style="border-bottom:1px solid var(--border);">
+              <td style="padding:8px 12px;"><code style="color:var(--blue);">{{ param }}</code></td>
+              <td style="padding:8px 12px;color:var(--text-3);font-size:12px;">{{ type_ }}</td>
+              <td style="padding:8px 12px;color:var(--text-3);">{{ default }}</td>
+              <td style="padding:8px 12px;color:var(--text-1);">{{ desc }}</td>
+            </tr>
+            {% endfor %}
+          </table>
+        </div>
+        <div style="margin-top:16px;">
+          <div style="font-size:12px;color:var(--text-2);font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Пример ответа</div>
+          <pre style="background:var(--bg-0);border-radius:var(--radius-sm);padding:14px;font-size:12px;color:var(--green);overflow-x:auto;line-height:1.6;">{
+  "videos": [{"id":1,"title":"...","slug":"...","views":1234,...}],
+  "total": 150,
+  "pages": 13,
+  "current_page": 1,
+  "per_page": 12
+}</pre>
+        </div>
+        {% endcall %}
+
+        <!-- GET /videos/slug -->
+        {% call endpoint_block('GET','/videos/&lt;slug&gt;','Детали видео','Нет') %}
+        <pre style="background:var(--bg-0);border-radius:var(--radius-sm);padding:14px;font-size:12px;color:var(--green);overflow-x:auto;margin-top:12px;line-height:1.6;">{
+  "id": 1, "title": "Название видео", "slug": "nazvanie-1",
+  "description": "...", "duration": 342, "views": 5230,
+  "likes": 112, "dislikes": 3,
+  "thumbnail": "/videos/thumbnail/1_thumb.jpg",
+  "author": {"username":"user1","display_name":"..."},
+  "category": {"id":2,"name":"Игры","slug":"gaming"},
+  "tags": [{"id":5,"name":"minecraft","slug":"minecraft"}]
+}</pre>
+        {% endcall %}
+
+        <!-- GET /videos/id/comments -->
+        {% call endpoint_block('GET','/videos/&lt;id&gt;/comments','Комментарии к видео','Нет') %}
+        <div style="font-size:13px;color:var(--text-2);margin-top:10px;">Параметр: <code style="color:var(--blue);">page</code> (integer, default 1) — постраничная загрузка по 20 шт.</div>
+        {% endcall %}
+
+        <!-- POST /videos/id/like -->
+        {% call endpoint_block('POST','/videos/&lt;id&gt;/like','Поставить/снять лайк','Да') %}
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px;">
+          <div>
+            <div style="font-size:12px;color:var(--text-2);font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Тело запроса</div>
+            <pre style="background:var(--bg-0);border-radius:4px;padding:10px;font-size:12px;color:var(--green);">{"is_like": true}</pre>
+          </div>
+          <div>
+            <div style="font-size:12px;color:var(--text-2);font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Ответ</div>
+            <pre style="background:var(--bg-0);border-radius:4px;padding:10px;font-size:12px;color:var(--green);">{"likes": 113, "dislikes": 3}</pre>
+          </div>
+        </div>
+        {% endcall %}
+      </div>
+
+      <!-- ── USERS ── -->
+      <div id="users" style="margin-bottom:48px;">
+        <h2 style="font-family:var(--font-display);font-size:26px;letter-spacing:2px;margin-bottom:20px;padding-bottom:12px;border-bottom:1px solid var(--border);">
+          Пользователи
+        </h2>
+
+        {% call endpoint_block('GET','/users/&lt;username&gt;','Профиль пользователя','Нет') %}
+        <pre style="background:var(--bg-0);border-radius:4px;padding:12px;font-size:12px;color:var(--green);margin-top:12px;line-height:1.6;">{
+  "id": 1, "username": "yaroslav", "display_name": "Ярослав Щербина",
+  "bio": "...", "avatar": "1_avatar.jpg",
+  "subscriber_count": 42, "video_count": 17, "total_views": 9800
+}</pre>
+        {% endcall %}
+
+        {% call endpoint_block('GET','/users/&lt;username&gt;/videos','Видео пользователя','Нет') %}
+        <div style="font-size:13px;color:var(--text-2);margin-top:10px;">Параметр: <code style="color:var(--blue);">page</code> — пагинация по 12 видео.</div>
+        {% endcall %}
+      </div>
+
+      <!-- ── CATEGORIES ── -->
+      <div id="categories" style="margin-bottom:48px;">
+        <h2 style="font-family:var(--font-display);font-size:26px;letter-spacing:2px;margin-bottom:20px;padding-bottom:12px;border-bottom:1px solid var(--border);">
+          Категории
+        </h2>
+        {% call endpoint_block('GET','/categories','Все категории','Нет') %}
+        <pre style="background:var(--bg-0);border-radius:4px;padding:12px;font-size:12px;color:var(--green);margin-top:12px;line-height:1.6;">[
+  {"id":1,"name":"Музыка","slug":"music","icon":"🎵","video_count":34},
+  {"id":2,"name":"Игры","slug":"gaming","icon":"🎮","video_count":91}
+]</pre>
+        {% endcall %}
+      </div>
+
+      <!-- ── SEARCH ── -->
+      <div id="search" style="margin-bottom:48px;">
+        <h2 style="font-family:var(--font-display);font-size:26px;letter-spacing:2px;margin-bottom:20px;padding-bottom:12px;border-bottom:1px solid var(--border);">
+          Поиск
+        </h2>
+        {% call endpoint_block('GET','/search','Поиск видео и пользователей','Нет') %}
+        <div style="font-size:13px;color:var(--text-2);margin-top:10px;">Параметр: <code style="color:var(--blue);">q</code> (string) — поисковый запрос. Возвращает до 10 видео и 5 пользователей.</div>
+        <pre style="background:var(--bg-0);border-radius:4px;padding:12px;font-size:12px;color:var(--green);margin-top:12px;line-height:1.6;">{
+  "videos": [{...}, ...],
+  "users":  [{...}, ...]
+}</pre>
+        {% endcall %}
+      </div>
+
+      <!-- ── ERRORS ── -->
+      <div id="errors" style="margin-bottom:48px;">
+        <h2 style="font-family:var(--font-display);font-size:26px;letter-spacing:2px;margin-bottom:20px;padding-bottom:12px;border-bottom:1px solid var(--border);">
+          Коды ошибок
+        </h2>
+        <div style="background:var(--bg-1);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;">
+          <table style="width:100%;border-collapse:collapse;">
+            <thead><tr style="background:var(--bg-2);">
+              <th style="padding:10px 16px;text-align:left;font-size:11px;color:var(--text-2);text-transform:uppercase;letter-spacing:1px;">Код</th>
+              <th style="padding:10px 16px;text-align:left;font-size:11px;color:var(--text-2);text-transform:uppercase;letter-spacing:1px;">Ответ</th>
+              <th style="padding:10px 16px;text-align:left;font-size:11px;color:var(--text-2);text-transform:uppercase;letter-spacing:1px;">Описание</th>
+            </tr></thead>
+            <tbody>
+              {% for code,resp,desc,badge in [
+                ('200','{"...":"..."}','Успех','badge-success'),
+                ('400','{"error":"Bad request"}','Некорректный запрос','badge-warning'),
+                ('401','{"error":"Token missing"}','Требуется токен','badge-warning'),
+                ('403','{"error":"Forbidden"}','Нет доступа','badge-danger'),
+                ('404','{"error":"Not found"}','Ресурс не найден','badge-secondary'),
+                ('429','{"error":"Rate limit exceeded"}','Превышен лимит запросов','badge-warning'),
+                ('500','{"error":"Internal server error"}','Ошибка сервера','badge-danger'),
+              ] %}
+              <tr style="border-top:1px solid var(--border);">
+                <td style="padding:12px 16px;"><span class="badge {{ badge }}" style="font-family:var(--font-mono);">{{ code }}</span></td>
+                <td style="padding:12px 16px;font-family:var(--font-mono);font-size:12px;color:var(--green);">{{ resp }}</td>
+                <td style="padding:12px 16px;font-size:13px;color:var(--text-2);">{{ desc }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Quick example -->
+      <div style="background:var(--bg-1);border:1px solid var(--border);border-radius:var(--radius-lg);padding:28px;">
+        <h3 style="font-size:16px;font-weight:700;margin-bottom:16px;">⚡ Быстрый старт (curl)</h3>
+        <pre style="background:var(--bg-0);border-radius:var(--radius-sm);padding:16px;font-size:13px;color:var(--green);overflow-x:auto;line-height:1.8;"># 1. Получить токен
+curl -X POST /api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"login":"admin","password":"Admin123!"}'
+
+# 2. Получить список видео
+curl /api/v1/videos?sort=popular&per_page=5
+
+# 3. Поиск
+curl "/api/v1/search?q=minecraft"
+
+# 4. Защищённый запрос (лайк)
+curl -X POST /api/v1/videos/1/like \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"is_like":true}'</pre>
+      </div>
+
+    </div><!-- /main content -->
+  </div><!-- /grid -->
+</div>
+
+{# Macros for endpoint cards #}
+{% macro endpoint_card(method,path,desc,auth_req,body,resp) %}
+<div style="background:var(--bg-1);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:12px;overflow:hidden;">
+  <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;background:var(--bg-2);">
+    <span style="font-family:var(--font-mono);font-size:12px;font-weight:700;padding:3px 10px;border-radius:4px;
+      background:{{ 'rgba(66,211,146,.15)' if method=='GET' else 'rgba(232,70,70,.15)' if method=='DELETE' else 'rgba(74,158,255,.15)' }};
+      color:{{ 'var(--green)' if method=='GET' else 'var(--accent)' if method=='DELETE' else 'var(--blue)' }};">{{ method }}</span>
+    <code style="color:var(--text-0);font-size:14px;">{{ path }}</code>
+    <span style="flex:1;font-size:13px;color:var(--text-2);">{{ desc }}</span>
+    {% if auth_req == 'Да' %}<span class="badge badge-warning" style="font-size:11px;">🔑 Auth</span>{% endif %}
+  </div>
+  <div style="padding:12px 16px;display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:13px;">
+    <div><span style="color:var(--text-3);">Тело:</span> <code style="color:var(--green);">{{ body }}</code></div>
+    <div><span style="color:var(--text-3);">Ответ:</span> <code style="color:var(--green);">{{ resp }}</code></div>
+  </div>
+</div>
+{% endmacro %}
+
+{% macro endpoint_block(method,path,desc,auth_req) %}
+<div style="background:var(--bg-1);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:16px;overflow:hidden;">
+  <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;background:var(--bg-2);">
+    <span style="font-family:var(--font-mono);font-size:12px;font-weight:700;padding:3px 10px;border-radius:4px;
+      background:{{ 'rgba(66,211,146,.15)' if method=='GET' else 'rgba(74,158,255,.15)' }};
+      color:{{ 'var(--green)' if method=='GET' else 'var(--blue)' }};">{{ method }}</span>
+    <code style="color:var(--text-0);font-size:14px;">{{ path }}</code>
+    <span style="flex:1;font-size:13px;color:var(--text-2);">{{ desc }}</span>
+    {% if auth_req == 'Да' %}<span class="badge badge-warning" style="font-size:11px;">🔑 Auth</span>{% endif %}
+  </div>
+  <div style="padding:16px;">{{ caller() }}</div>
+</div>
+{% endmacro %}
+
+<style>
+@media(max-width:768px){
+  .api-layout{grid-template-columns:1fr!important;}
+  nav.api-nav{display:none;}
+}
+</style>
+{% endblock %}

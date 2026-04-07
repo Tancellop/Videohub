@@ -1,0 +1,759 @@
+{% extends "base.html" %}
+{% block title %}{{ video.title }}{% endblock %}
+{% block meta_description %}{{ video.description | truncate(160) }}{% endblock %}
+
+{% block extra_head %}
+<style>
+/* ── Watch Page Extras ─────────────────────── */
+.watch-layout { display:grid; grid-template-columns:1fr 360px; gap:28px; padding-top:24px; }
+@media(max-width:1100px){.watch-layout{grid-template-columns:1fr;}}
+
+.video-player-wrap { border-radius:var(--radius-lg); overflow:hidden; background:#000; box-shadow:0 24px 80px rgba(0,0,0,.9); }
+.video-player { width:100%; display:block; max-height:72vh; background:#000; }
+
+.video-title-main { font-family:var(--font-heading); font-size:22px; font-weight:800; line-height:1.3; margin:18px 0 0; }
+
+.video-actions { display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding:14px 0; border-bottom:1px solid var(--border); margin-bottom:0; }
+.video-meta-row { font-size:13px; color:var(--text-2); display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+.video-meta-row a { color:var(--red); }
+
+.action-group { display:flex; align-items:center; background:var(--bg-2); border-radius:999px; border:1px solid var(--border-bright); overflow:hidden; }
+.action-btn { display:flex; align-items:center; gap:7px; padding:8px 16px; font-size:13px; font-weight:600; color:var(--text-1); transition:all var(--t); }
+.action-btn:hover { color:var(--text-0); background:var(--bg-3); }
+.action-btn.liked   { color:var(--red);  }
+.action-btn.disliked{ color:var(--cyan); }
+.action-divider { width:1px; height:24px; background:var(--border-bright); flex-shrink:0; }
+.action-btn-sm { display:inline-flex; align-items:center; gap:6px; padding:8px 14px; font-size:13px; font-weight:500; color:var(--text-1); background:var(--bg-2); border:1px solid var(--border); border-radius:999px; transition:all var(--t); cursor:pointer; }
+.action-btn-sm:hover { color:var(--text-0); border-color:var(--border-bright); background:var(--bg-3); }
+
+.channel-row { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:18px 0; border-bottom:1px solid var(--border); flex-wrap:wrap; }
+.channel-info { display:flex; align-items:center; gap:14px; }
+.channel-avatar img { width:48px; height:48px; border-radius:50%; object-fit:cover; border:2px solid var(--border-bright); transition:border-color var(--t); }
+.channel-avatar:hover img { border-color:var(--red); }
+.channel-name { font-weight:700; font-size:15px; display:block; transition:color var(--t); }
+.channel-name:hover { color:var(--red); }
+.channel-subs { font-size:12px; color:var(--text-2); }
+.btn-subscribe { padding:9px 24px; border-radius:999px; background:var(--red); color:white; font-size:13px; font-weight:700; box-shadow:0 0 12px var(--red-glow); transition:all var(--t); border:none; cursor:pointer; }
+.btn-subscribe:hover { background:var(--red-hover); box-shadow:0 0 24px var(--red-glow); }
+.btn-subscribe.subscribed { background:var(--bg-3); color:var(--text-1); border:1px solid var(--border-bright); box-shadow:none; }
+
+/* Description */
+.video-description { margin-top:16px; padding:16px; background:var(--bg-2); border:1px solid var(--border); border-radius:var(--radius); font-size:14px; line-height:1.75; color:var(--text-1); cursor:pointer; transition:background var(--t); }
+.video-description.collapsed { max-height:80px; overflow:hidden; position:relative; }
+.video-description.collapsed::after { content:''; position:absolute; bottom:0; left:0; right:0; height:40px; background:linear-gradient(transparent, var(--bg-2)); }
+.desc-toggle { background:none; border:none; color:var(--cyan); font-size:13px; font-weight:600; cursor:pointer; margin-top:8px; padding:4px 0; }
+.tag-pill { display:inline-block; padding:4px 12px; border-radius:999px; background:var(--cyan-dim); border:1px solid var(--border-cyan); color:var(--cyan); font-size:12px; font-weight:500; margin:4px 4px 4px 0; transition:all var(--t); }
+.tag-pill:hover { background:rgba(0,212,255,.18); }
+
+/* ── Comments ─────────────────────────────── */
+.comments-section { margin-top:28px; }
+.comments-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:24px; flex-wrap:wrap; gap:12px; }
+.comments-title { font-family:var(--font-heading); font-size:20px; font-weight:700; }
+.sort-select { background:var(--bg-2); border:1px solid var(--border); border-radius:999px; color:var(--text-1); font-size:13px; padding:6px 14px; cursor:pointer; outline:none; transition:all var(--t); }
+.sort-select:focus { border-color:var(--border-cyan); color:var(--text-0); }
+
+/* Comment form */
+.comment-form { display:flex; gap:12px; margin-bottom:32px; align-items:flex-start; }
+.comment-avatar-img { width:38px; height:38px; border-radius:50%; object-fit:cover; border:2px solid var(--border); flex-shrink:0; }
+.comment-input-wrap { flex:1; }
+.comment-input { width:100%; padding:12px 16px; background:var(--bg-2); border:1px solid var(--border); border-bottom:2px solid var(--border); border-radius:0; color:var(--text-0); font-size:14px; resize:none; outline:none; transition:border-color var(--t); min-height:44px; border-radius:var(--radius-sm); }
+.comment-input:focus { border-color:var(--border-cyan); background:var(--bg-3); box-shadow:0 0 0 3px rgba(0,212,255,.07); }
+.comment-form-actions { display:flex; justify-content:space-between; align-items:center; margin-top:8px; }
+.comment-emoji-bar { display:flex; gap:4px; }
+.emoji-quick-btn { background:none; border:none; font-size:18px; cursor:pointer; padding:2px 4px; border-radius:4px; transition:transform var(--t); opacity:.7; }
+.emoji-quick-btn:hover { transform:scale(1.3); opacity:1; }
+
+/* Comment item */
+.comment-item { display:flex; gap:12px; padding:16px 0; border-bottom:1px solid rgba(255,255,255,.04); animation:fadeUp .3s var(--ease-out) both; }
+.comment-item:last-child { border-bottom:none; }
+.comment-avatar-img.sm { width:28px; height:28px; }
+.comment-body { flex:1; min-width:0; }
+.comment-header { display:flex; align-items:center; gap:8px; margin-bottom:6px; flex-wrap:wrap; }
+.comment-author { font-size:13px; font-weight:700; color:var(--text-0); transition:color var(--t); }
+.comment-author:hover { color:var(--cyan); }
+.comment-author.is-owner { color:var(--gold); }
+.comment-time { font-size:12px; color:var(--text-3); }
+.pinned-tag { font-size:10px; background:var(--gold-dim); color:var(--gold); padding:2px 8px; border-radius:4px; font-weight:700; }
+.comment-content { font-size:14px; color:var(--text-1); line-height:1.7; word-break:break-word; }
+.comment-content .timestamp-link { color:var(--cyan); font-weight:600; cursor:pointer; }
+.comment-content .timestamp-link:hover { text-decoration:underline; }
+.comment-content .mention { color:var(--red); font-weight:600; }
+
+/* Comment footer */
+.comment-footer { display:flex; align-items:center; gap:4px; margin-top:8px; flex-wrap:wrap; }
+.cmt-btn { display:inline-flex; align-items:center; gap:5px; padding:4px 10px; border-radius:999px; font-size:12px; font-weight:600; color:var(--text-2); background:none; border:none; cursor:pointer; transition:all var(--t); }
+.cmt-btn:hover { color:var(--text-0); background:var(--bg-3); }
+.cmt-btn.liked { color:var(--red); }
+.cmt-btn.reply-btn:hover { color:var(--cyan); }
+
+/* Reactions */
+.reactions-row { display:flex; gap:4px; margin-top:8px; flex-wrap:wrap; }
+.reaction-chip { display:inline-flex; align-items:center; gap:4px; padding:3px 10px; border-radius:999px; background:var(--bg-3); border:1px solid var(--border); font-size:12px; cursor:pointer; transition:all var(--t); user-select:none; }
+.reaction-chip:hover { border-color:var(--border-bright); transform:scale(1.05); }
+.reaction-chip.active { background:rgba(255,40,85,.12); border-color:rgba(255,40,85,.3); color:var(--red); }
+.reaction-picker { display:none; position:absolute; background:var(--bg-3); border:1px solid var(--border-bright); border-radius:var(--radius); padding:8px 12px; gap:6px; flex-wrap:wrap; z-index:50; box-shadow:var(--shadow-md); animation:dropIn .2s var(--ease-out); }
+.reaction-picker.open { display:flex; }
+.reaction-opt { font-size:20px; cursor:pointer; padding:3px; border-radius:4px; transition:transform .15s; }
+.reaction-opt:hover { transform:scale(1.3); }
+
+/* Replies */
+.replies-container { margin-left:50px; margin-top:8px; }
+.replies-toggle { display:inline-flex; align-items:center; gap:6px; color:var(--cyan); font-size:13px; font-weight:600; cursor:pointer; background:none; border:none; padding:4px 0; margin-top:4px; transition:all var(--t); }
+.replies-toggle:hover { color:var(--red); }
+.replies-toggle svg { transition:transform var(--t); }
+.replies-toggle.open svg { transform:rotate(180deg); }
+.reply-form { display:flex; gap:10px; align-items:flex-start; margin:12px 0; animation:fadeUp .2s var(--ease-out); }
+.reply-input { flex:1; padding:10px 14px; background:var(--bg-2); border:1px solid var(--border); border-radius:var(--radius-sm); color:var(--text-0); font-size:13px; outline:none; resize:none; transition:border-color var(--t); }
+.reply-input:focus { border-color:var(--border-cyan); background:var(--bg-3); }
+
+/* Related */
+.related-card { display:flex; gap:10px; padding:8px; border-radius:var(--radius-sm); cursor:pointer; transition:background var(--t); border:1px solid transparent; margin-bottom:4px; }
+.related-card:hover { background:var(--bg-2); border-color:var(--border); }
+.related-thumb-wrap { width:120px; height:68px; border-radius:8px; overflow:hidden; flex-shrink:0; position:relative; background:var(--bg-3); }
+.related-thumb-wrap img { width:100%; height:100%; object-fit:cover; }
+.related-duration { position:absolute; bottom:4px; right:4px; background:rgba(0,0,0,.88); color:white; font-size:10px; font-weight:700; padding:2px 6px; border-radius:4px; font-family:var(--font-mono); }
+.related-title { font-size:13px; font-weight:600; line-height:1.4; color:var(--text-0); display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; margin-bottom:4px; }
+.related-meta { font-size:11px; color:var(--text-2); }
+
+/* Load more */
+.load-more-btn { width:100%; padding:12px; background:var(--bg-2); border:1px solid var(--border); border-radius:var(--radius); color:var(--text-1); font-size:14px; font-weight:600; cursor:pointer; transition:all var(--t); margin-top:16px; }
+.load-more-btn:hover { background:var(--bg-3); border-color:var(--border-bright); color:var(--text-0); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="watch-layout">
+  <!-- ── Main Column ───────────────────────── -->
+  <div class="watch-main">
+
+    <!-- Player -->
+    <div class="video-player-wrap">
+      {% if video.status == 'published' %}
+      <video class="video-player" controls preload="metadata" id="mainPlayer"
+             poster="{{ url_for('videos.serve_thumbnail', filename=video.thumbnail) if video.thumbnail else '' }}">
+        {% if video.has_1080p %}<source src="{{ url_for('static', filename='uploads/videos/' + video.id|string + '_1080p.mp4') }}" type="video/mp4">{% endif %}
+        {% if video.has_720p  %}<source src="{{ url_for('static', filename='uploads/videos/' + video.id|string + '_720p.mp4') }}"  type="video/mp4">{% endif %}
+        {% if video.has_360p  %}<source src="{{ url_for('static', filename='uploads/videos/' + video.id|string + '_360p.mp4') }}"  type="video/mp4">{% endif %}
+        <source src="{{ url_for('videos.serve_video', filename=video.filename) }}" type="video/mp4">
+      </video>
+      {% else %}
+      <div style="aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;background:var(--bg-2);">
+        <div style="text-align:center;color:var(--text-2);">
+          <div style="font-size:48px;margin-bottom:12px;">⏳</div>
+          <div style="font-size:16px;">Видео обрабатывается…</div>
+          <div style="font-size:13px;margin-top:6px;color:var(--text-3);">Обновите страницу через несколько минут</div>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Title -->
+    <h1 class="video-title-main">{{ video.title }}</h1>
+
+    <!-- Actions Row -->
+    <div class="video-actions" style="margin-top:14px;">
+      <div class="video-meta-row">
+        <span>{{ video.views | format_views }} просмотров</span>
+        <span>•</span>
+        <span>{{ video.published_at | timeago if video.published_at }}</span>
+        {% if video.category %}
+        <span>•</span>
+        <a href="{{ url_for('main.index', category=video.category.slug) }}">{{ video.category.icon }} {{ video.category.name }}</a>
+        {% endif %}
+      </div>
+
+      <div style="display:flex;align-items:center;gap:8px;margin-left:auto;flex-wrap:wrap;">
+        <!-- Like/Dislike -->
+        {% if current_user.is_authenticated %}
+        <div class="action-group">
+          <button class="action-btn {{ 'liked' if user_like == true }}" data-action="like"
+                  onclick="handleLike({{ video.id }}, true, this)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg>
+            <span class="count">{{ video.like_count() | format_views }}</span>
+          </button>
+          <div class="action-divider"></div>
+          <button class="action-btn {{ 'disliked' if user_like == false }}" data-action="dislike"
+                  onclick="handleLike({{ video.id }}, false, this)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17"/></svg>
+            <span class="count">{{ video.dislike_count() | format_views }}</span>
+          </button>
+        </div>
+        {% else %}
+        <div class="action-group">
+          <a href="{{ url_for('auth.login') }}" class="action-btn">👍 {{ video.like_count() | format_views }}</a>
+        </div>
+        {% endif %}
+
+        <button class="action-btn-sm" onclick="copyShareLink()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+          Поделиться
+        </button>
+
+        {% if current_user.is_authenticated and current_user.id == video.user_id %}
+        <a href="{{ url_for('videos.edit', video_id=video.id) }}" class="action-btn-sm">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          Редактировать
+        </a>
+        {% endif %}
+
+        {% if current_user.is_authenticated %}
+        <button class="action-btn-sm" onclick="reportVideo({{ video.id }})">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+          Жалоба
+        </button>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Channel Row -->
+    <div class="channel-row">
+      <div class="channel-info">
+        <a href="{{ url_for('users.profile', username=video.author.username) }}" class="channel-avatar">
+          <img src="{{ url_for('static', filename='uploads/avatars/' + video.author.avatar) if video.author.avatar and video.author.avatar != 'default_avatar.png' else url_for('static', filename='img/default_avatar.png') }}"
+               alt="{{ video.author.username }}"
+               onerror="this.src='{{ url_for('static', filename='img/default_avatar.png') }}'">
+        </a>
+        <div>
+          <a href="{{ url_for('users.profile', username=video.author.username) }}" class="channel-name">
+            {{ video.author.display_name or video.author.username }}
+          </a>
+          <div class="channel-subs">{{ video.author.subscriber_count() | format_views }} подписчиков</div>
+        </div>
+      </div>
+      {% if current_user.is_authenticated and current_user.id != video.user_id %}
+      <button class="btn-subscribe {{ 'subscribed' if is_subscribed }}" id="subscribeBtn"
+              onclick="handleSubscribe({{ video.author.id }}, this)">
+        {{ 'Отписаться' if is_subscribed else '+ Подписаться' }}
+      </button>
+      {% elif not current_user.is_authenticated %}
+      <a href="{{ url_for('auth.login') }}" class="btn-subscribe">+ Подписаться</a>
+      {% endif %}
+    </div>
+
+    <!-- Description -->
+    {% if video.description %}
+    <div class="video-description collapsed" id="videoDesc">
+      {{ video.description | nl2br | safe }}
+      <div style="font-size:12px;color:var(--text-3);margin-top:10px;">
+        {% if video.resolution %}<span>{{ video.resolution }}</span>{% endif %}
+        {% if video.format %}<span> • {{ video.format }}</span>{% endif %}
+        {% if video.file_size %}<span> • {{ video.file_size_str() }}</span>{% endif %}
+      </div>
+    </div>
+    <button class="desc-toggle" onclick="toggleDescription(this)">Показать больше</button>
+    {% endif %}
+
+    <!-- Tags -->
+    {% if video.tags %}
+    <div style="margin-top:14px;">
+      {% for tag in video.tags %}
+      <a href="{{ url_for('main.tag', slug=tag.slug) }}" class="tag-pill">#{{ tag.name }}</a>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- ── Comments ──────────────────────── -->
+    <div class="comments-section">
+      <div class="comments-header">
+        <div class="comments-title">
+          💬 Комментарии
+          <span id="commentCount" style="color:var(--text-2);font-size:16px;font-weight:400;margin-left:6px;">{{ video.comment_count() }}</span>
+        </div>
+        <select class="sort-select" id="sortSelect" onchange="loadComments(1)">
+          <option value="top">🔥 Популярные</option>
+          <option value="new">🆕 Новые</option>
+          <option value="old">📅 Старые</option>
+        </select>
+      </div>
+
+      {% if current_user.is_authenticated %}
+      <div class="comment-form">
+        <img src="{{ url_for('static', filename='uploads/avatars/' + current_user.avatar) if current_user.avatar and current_user.avatar != 'default_avatar.png' else url_for('static', filename='img/default_avatar.png') }}"
+             class="comment-avatar-img" alt="{{ current_user.username }}"
+             onerror="this.src='{{ url_for('static', filename='img/default_avatar.png') }}'">
+        <div class="comment-input-wrap">
+          <textarea class="comment-input" id="commentInput"
+                    placeholder="Поделитесь своим мнением… (Ctrl+Enter для отправки)"
+                    rows="1" maxlength="2000"></textarea>
+          <div class="comment-form-actions">
+            <div class="comment-emoji-bar">
+              <button class="emoji-quick-btn" onclick="insertEmoji('😂')">😂</button>
+              <button class="emoji-quick-btn" onclick="insertEmoji('🔥')">🔥</button>
+              <button class="emoji-quick-btn" onclick="insertEmoji('👍')">👍</button>
+              <button class="emoji-quick-btn" onclick="insertEmoji('❤️')">❤️</button>
+              <button class="emoji-quick-btn" onclick="insertEmoji('🎉')">🎉</button>
+            </div>
+            <div style="display:flex;gap:8px;">
+              <button class="action-btn-sm" onclick="clearCommentInput()">Отмена</button>
+              <button class="btn-primary" id="commentSubmitBtn" onclick="submitMainComment()"
+                      style="padding:7px 18px;font-size:13px;">
+                Отправить
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% else %}
+      <div style="padding:20px;background:var(--bg-2);border-radius:var(--radius);margin-bottom:28px;text-align:center;font-size:14px;color:var(--text-2);">
+        <a href="{{ url_for('auth.login') }}" style="color:var(--red);font-weight:600;">Войдите</a>, чтобы оставить комментарий
+      </div>
+      {% endif %}
+
+      <!-- Comments List -->
+      <div id="commentsList"></div>
+      <button class="load-more-btn" id="loadMoreBtn" style="display:none;" onclick="loadMore()">
+        Загрузить ещё комментарии
+      </button>
+      <div id="commentsLoading" style="text-align:center;padding:32px;color:var(--text-2);font-size:14px;display:none;">
+        ⏳ Загружаю комментарии…
+      </div>
+    </div>
+
+  </div><!-- /watch-main -->
+
+  <!-- ── Sidebar ────────────────────────── -->
+  <div class="watch-sidebar">
+    <div style="font-size:15px;font-weight:700;margin-bottom:14px;font-family:var(--font-heading);">Похожие видео</div>
+    {% if related %}
+    {% for rv in related %}
+    <a href="{{ url_for('videos.watch', slug=rv.slug) }}" class="related-card">
+      <div class="related-thumb-wrap">
+        {% if rv.thumbnail %}
+        <img src="{{ url_for('videos.serve_thumbnail', filename=rv.thumbnail) }}" alt="{{ rv.title }}" loading="lazy">
+        {% else %}
+        <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--text-3);">▶</div>
+        {% endif %}
+        <span class="related-duration">{{ rv.duration_str() }}</span>
+      </div>
+      <div class="related-info">
+        <div class="related-title">{{ rv.title }}</div>
+        <div class="related-meta">{{ rv.author.display_name or rv.author.username }}</div>
+        <div class="related-meta">{{ rv.views | format_views }} просм.</div>
+      </div>
+    </a>
+    {% endfor %}
+    {% else %}
+    <div style="color:var(--text-2);font-size:14px;padding:20px 0;">Нет похожих видео</div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const VIDEO_ID  = {{ video.id }};
+const VIDEO_OWN = {{ video.user_id }};
+const CUR_USER  = {{ current_user.id if current_user.is_authenticated else 'null' }};
+const IS_MOD    = {{ 'true' if current_user.is_authenticated and current_user.is_moderator else 'false' }};
+const REACTIONS = ['❤️','🔥','😂','😮','😢','👏'];
+
+let commentsPage = 1;
+let commentsLoading = false;
+let commentsTotal = 0;
+
+// ── Load Comments ─────────────────────────
+async function loadComments(page = 1) {
+  if (commentsLoading) return;
+  commentsLoading = true;
+  const sort = document.getElementById('sortSelect').value;
+  const list = document.getElementById('commentsList');
+  const loading = document.getElementById('commentsLoading');
+  const moreBtn = document.getElementById('loadMoreBtn');
+
+  if (page === 1) {
+    list.innerHTML = '';
+    moreBtn.style.display = 'none';
+  }
+  loading.style.display = 'block';
+
+  try {
+    const res  = await fetch(`/videos/${VIDEO_ID}/comments?sort=${sort}&page=${page}`);
+    const data = await res.json();
+    commentsTotal = data.total;
+    commentsPage  = page;
+
+    data.comments.forEach(c => list.appendChild(buildComment(c)));
+
+    if (data.page < data.pages) {
+      moreBtn.style.display = 'block';
+    } else {
+      moreBtn.style.display = 'none';
+    }
+  } catch (e) {
+    if (page === 1) list.innerHTML = '<div style="padding:32px;text-align:center;color:var(--text-2);">Не удалось загрузить комментарии</div>';
+  } finally {
+    commentsLoading = false;
+    loading.style.display = 'none';
+  }
+}
+
+function loadMore() {
+  loadComments(commentsPage + 1);
+}
+
+// ── Build Comment Element ─────────────────
+function buildComment(c, isReply = false) {
+  const wrap = document.createElement('div');
+  wrap.className = 'comment-item';
+  wrap.dataset.id = c.id;
+
+  const avatarSrc = c.avatar && c.avatar !== 'default_avatar.png'
+    ? `/static/uploads/avatars/${c.avatar}`
+    : '/static/img/default_avatar.png';
+
+  const pinnedBadge = c.is_pinned ? '<span class="pinned-tag">📌 Закреплён</span>' : '';
+  const ownerClass  = c.author_username && VIDEO_OWN && c.author_username === authorUsername() ? 'is-owner' : '';
+
+  // Parse timestamps like 1:23 or 12:34 → clickable
+  const contentHtml = parseCommentContent(escapeHtml(c.content));
+
+  // Reactions placeholder
+  const reactionsHtml = buildReactionsHtml(c.id, c.reactions || {});
+
+  // Reply section (only for top-level)
+  let repliesHtml = '';
+  if (!isReply) {
+    const rc = c.reply_count || (c.replies ? c.replies.length : 0);
+    repliesHtml = `
+      <div class="replies-container" id="replies-${c.id}">
+        ${rc > 0 ? `<button class="replies-toggle" id="toggleReplies-${c.id}" onclick="toggleReplies(${c.id}, ${rc})">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          ${rc} ${declension(rc, 'ответ','ответа','ответов')}
+        </button>` : ''}
+        <div id="repliesList-${c.id}" style="display:none;margin-top:10px;"></div>
+        ${CUR_USER ? `<div id="replyForm-${c.id}" style="display:none;">
+          <div class="reply-form">
+            <img src="${avatarSrc}" class="comment-avatar-img sm" alt="">
+            <textarea class="reply-input" id="replyInput-${c.id}" placeholder="Ответить @${escapeHtml(c.author)}…" rows="1" maxlength="2000"></textarea>
+          </div>
+          <div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:12px;">
+            <button class="action-btn-sm" onclick="hideReplyForm(${c.id})">Отмена</button>
+            <button class="btn-primary" onclick="submitReply(${c.id})" style="padding:6px 16px;font-size:13px;">Ответить</button>
+          </div>
+        </div>` : ''}
+      </div>`;
+  }
+
+  const deleteBtn = c.can_delete
+    ? `<button class="cmt-btn" onclick="deleteComment(${c.id}, this)" style="color:var(--text-3);">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+        Удалить
+       </button>` : '';
+
+  const replyBtn = (!isReply && CUR_USER)
+    ? `<button class="cmt-btn reply-btn" onclick="showReplyForm(${c.id}, '${escapeHtml(c.author)}')">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/></svg>
+        Ответить
+       </button>` : '';
+
+  wrap.innerHTML = `
+    <img src="${avatarSrc}" class="comment-avatar-img ${isReply ? 'sm' : ''}" alt="${escapeHtml(c.author)}"
+         onerror="this.src='/static/img/default_avatar.png'">
+    <div class="comment-body">
+      <div class="comment-header">
+        <a href="/users/${escapeHtml(c.author_username)}" class="comment-author ${ownerClass}">${escapeHtml(c.author)}</a>
+        <span class="comment-time">${timeAgo(c.created_at)}</span>
+        ${pinnedBadge}
+      </div>
+      <div class="comment-content">${contentHtml}</div>
+      <div class="comment-footer">
+        <button class="cmt-btn ${c.liked ? 'liked' : ''}" id="likeBtn-${c.id}"
+                onclick="likeComment(${c.id}, this)">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="${c.liked ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg>
+          <span id="likeCount-${c.id}">${c.like_count || 0}</span>
+        </button>
+        ${replyBtn}
+        <button class="cmt-btn" onclick="toggleReactionPicker(${c.id}, event)">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
+        </button>
+        ${deleteBtn}
+        <div class="reaction-picker" id="picker-${c.id}">
+          ${REACTIONS.map(r => `<span class="reaction-opt" onclick="addReaction(${c.id}, '${r}')">${r}</span>`).join('')}
+        </div>
+      </div>
+      ${reactionsHtml ? `<div class="reactions-row" id="reactions-${c.id}">${reactionsHtml}</div>` : `<div class="reactions-row" id="reactions-${c.id}"></div>`}
+      ${repliesHtml}
+    </div>`;
+
+  // Pre-load existing replies
+  if (!isReply && c.replies && c.replies.length > 0) {
+    const repliesList = wrap.querySelector(`#repliesList-${c.id}`);
+    if (repliesList) {
+      c.replies.forEach(r => repliesList.appendChild(buildComment(r, true)));
+      repliesList.style.display = 'block';
+      const toggleBtn = wrap.querySelector(`#toggleReplies-${c.id}`);
+      if (toggleBtn) { toggleBtn.classList.add('open'); }
+    }
+  }
+
+  return wrap;
+}
+
+// ── Helpers ───────────────────────────────
+function authorUsername() {
+  try {
+    const meta = document.querySelector('.channel-name');
+    return meta?.getAttribute('data-username') || '';
+  } catch { return ''; }
+}
+
+function parseCommentContent(text) {
+  // Timestamps 0:00-9:59:59
+  text = text.replace(/\b(\d{1,2}:\d{2}(?::\d{2})?)\b/g, (match) => {
+    return `<span class="timestamp-link" onclick="seekTo('${match}')">${match}</span>`;
+  });
+  // @mentions
+  text = text.replace(/@(\w+)/g, '<span class="mention">@$1</span>');
+  return text;
+}
+
+function buildReactionsHtml(commentId, reactions) {
+  return Object.entries(reactions).map(([emoji, count]) =>
+    `<span class="reaction-chip" data-emoji="${emoji}" onclick="addReaction(${commentId}, '${emoji}')">${emoji} ${count}</span>`
+  ).join('');
+}
+
+function seekTo(timeStr) {
+  const parts = timeStr.split(':').map(Number);
+  let secs = 0;
+  if (parts.length === 3) secs = parts[0]*3600 + parts[1]*60 + parts[2];
+  else if (parts.length === 2) secs = parts[0]*60 + parts[1];
+  const player = document.getElementById('mainPlayer');
+  if (player) { player.currentTime = secs; player.play(); }
+}
+
+function declension(n, one, two, five) {
+  const abs = Math.abs(n) % 100;
+  const n1  = abs % 10;
+  if (abs > 10 && abs < 20) return `${n} ${five}`;
+  if (n1 > 1 && n1 < 5)    return `${n} ${two}`;
+  if (n1 === 1)              return `${n} ${one}`;
+  return `${n} ${five}`;
+}
+
+function timeAgo(isoStr) {
+  const diff = (Date.now() - new Date(isoStr).getTime()) / 1000;
+  if (diff < 60) return 'только что';
+  if (diff < 3600) return `${Math.floor(diff/60)} мин. назад`;
+  if (diff < 86400) return `${Math.floor(diff/3600)} ч. назад`;
+  if (diff < 604800) return `${Math.floor(diff/86400)} дн. назад`;
+  return new Date(isoStr).toLocaleDateString('ru-RU');
+}
+
+// ── Submit Main Comment ───────────────────
+async function submitMainComment() {
+  const input = document.getElementById('commentInput');
+  const btn   = document.getElementById('commentSubmitBtn');
+  const content = input.value.trim();
+  if (!content) return;
+
+  btn.disabled = true; btn.textContent = 'Отправка…';
+  try {
+    const data = await apiCall(`/videos/${VIDEO_ID}/comment`, 'POST', { content, parent_id: null });
+    if (data.id) {
+      const list = document.getElementById('commentsList');
+      const el   = buildComment(data);
+      list.insertBefore(el, list.firstChild);
+      input.value = ''; input.style.height = '';
+      const countEl = document.getElementById('commentCount');
+      if (countEl) countEl.textContent = parseInt(countEl.textContent || 0) + 1;
+      showToast('Комментарий добавлен! 💬');
+    } else { showToast(data.error || 'Ошибка', 'error'); }
+  } catch { showToast('Ошибка отправки', 'error'); }
+  finally { btn.disabled = false; btn.textContent = 'Отправить'; }
+}
+
+// ── Reply system ──────────────────────────
+function showReplyForm(commentId, authorName) {
+  document.querySelectorAll('[id^="replyForm-"]').forEach(f => f.style.display = 'none');
+  const form  = document.getElementById(`replyForm-${commentId}`);
+  const input = document.getElementById(`replyInput-${commentId}`);
+  if (!form || !input) return;
+  form.style.display  = 'block';
+  input.value = `@${authorName} `;
+  input.focus();
+  input.setSelectionRange(input.value.length, input.value.length);
+  // Auto-expand
+  input.addEventListener('input', function() {
+    this.style.height = 'auto';
+    this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+  }, { once: false });
+  input.addEventListener('keydown', function(e) {
+    if (e.ctrlKey && e.key === 'Enter') submitReply(commentId);
+  });
+}
+
+function hideReplyForm(commentId) {
+  const form = document.getElementById(`replyForm-${commentId}`);
+  if (form) form.style.display = 'none';
+}
+
+async function submitReply(parentId) {
+  const input   = document.getElementById(`replyInput-${parentId}`);
+  const content = input?.value.trim();
+  if (!content) return;
+
+  try {
+    const data = await apiCall(`/videos/${VIDEO_ID}/comment`, 'POST', { content, parent_id: parentId });
+    if (data.id) {
+      const repliesList = document.getElementById(`repliesList-${parentId}`);
+      if (repliesList) {
+        repliesList.style.display = 'block';
+        repliesList.appendChild(buildComment(data, true));
+      }
+      hideReplyForm(parentId);
+      // Update toggle button count
+      const toggleBtn = document.getElementById(`toggleReplies-${parentId}`);
+      if (toggleBtn) {
+        const cur = parseInt(toggleBtn.textContent) || 0;
+        const newCount = cur + 1;
+        toggleBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg> ${declension(newCount,'ответ','ответа','ответов')}`;
+        toggleBtn.classList.add('open');
+        toggleBtn.style.display = 'inline-flex';
+      } else {
+        // Create toggle button
+        const container = document.getElementById(`replies-${parentId}`);
+        if (container) {
+          const btn = document.createElement('button');
+          btn.className = 'replies-toggle open';
+          btn.id = `toggleReplies-${parentId}`;
+          btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg> 1 ответ`;
+          btn.onclick = () => toggleReplies(parentId, 1);
+          container.insertBefore(btn, container.firstChild);
+        }
+      }
+      showToast('Ответ добавлен!');
+    } else { showToast(data.error || 'Ошибка', 'error'); }
+  } catch { showToast('Ошибка отправки', 'error'); }
+}
+
+// ── Toggle Replies ────────────────────────
+function toggleReplies(commentId, count) {
+  const list    = document.getElementById(`repliesList-${commentId}`);
+  const btn     = document.getElementById(`toggleReplies-${commentId}`);
+  if (!list || !btn) return;
+
+  const isOpen = list.style.display !== 'none';
+  list.style.display = isOpen ? 'none' : 'block';
+  btn.classList.toggle('open', !isOpen);
+
+  if (!isOpen) {
+    btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg> Скрыть ответы`;
+  } else {
+    btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg> ${declension(count,'ответ','ответа','ответов')}`;
+  }
+}
+
+// ── Like Comment ──────────────────────────
+async function likeComment(commentId, btn) {
+  if (!CUR_USER) { showToast('Войдите для оценки', 'info'); return; }
+  try {
+    const data = await apiCall(`/videos/comment/${commentId}/like`, 'POST');
+    const countEl = document.getElementById(`likeCount-${commentId}`);
+    if (countEl) countEl.textContent = data.count;
+    btn.classList.toggle('liked', data.liked);
+    const svg = btn.querySelector('svg');
+    if (svg) svg.setAttribute('fill', data.liked ? 'currentColor' : 'none');
+  } catch { showToast('Ошибка', 'error'); }
+}
+
+// ── Reaction system ───────────────────────
+const reactionStore = {};
+
+function toggleReactionPicker(commentId, e) {
+  e.stopPropagation();
+  document.querySelectorAll('.reaction-picker.open').forEach(p => {
+    if (p.id !== `picker-${commentId}`) p.classList.remove('open');
+  });
+  document.getElementById(`picker-${commentId}`)?.classList.toggle('open');
+}
+
+document.addEventListener('click', () => {
+  document.querySelectorAll('.reaction-picker.open').forEach(p => p.classList.remove('open'));
+});
+
+function addReaction(commentId, emoji) {
+  if (!CUR_USER) { showToast('Войдите для реакций', 'info'); return; }
+  if (!reactionStore[commentId]) reactionStore[commentId] = {};
+  const row = document.getElementById(`reactions-${commentId}`);
+  if (!row) return;
+
+  const existing = row.querySelector(`[data-emoji="${emoji}"]`);
+  if (existing) {
+    const cur = parseInt(existing.textContent.trim().split(' ').pop()) || 0;
+    if (existing.classList.contains('active')) {
+      existing.classList.remove('active');
+      if (cur <= 1) existing.remove();
+      else existing.textContent = `${emoji} ${cur - 1}`;
+    } else {
+      existing.classList.add('active');
+      existing.textContent = `${emoji} ${cur + 1}`;
+    }
+  } else {
+    const chip = document.createElement('span');
+    chip.className = 'reaction-chip active';
+    chip.dataset.emoji = emoji;
+    chip.textContent = `${emoji} 1`;
+    chip.onclick = () => addReaction(commentId, emoji);
+    row.appendChild(chip);
+  }
+  document.getElementById(`picker-${commentId}`)?.classList.remove('open');
+}
+
+// ── Delete Comment ────────────────────────
+window.deleteComment = async function(commentId, btn) {
+  if (!confirm('Удалить комментарий?')) return;
+  try {
+    await apiCall(`/videos/comment/${commentId}/delete`, 'DELETE');
+    btn.closest('.comment-item').remove();
+    const countEl = document.getElementById('commentCount');
+    if (countEl) countEl.textContent = Math.max(0, parseInt(countEl.textContent || 0) - 1);
+    showToast('Удалено.');
+  } catch { showToast('Ошибка', 'error'); }
+};
+
+// ── Misc ──────────────────────────────────
+function clearCommentInput() {
+  const el = document.getElementById('commentInput');
+  if (el) { el.value = ''; el.style.height = ''; }
+}
+
+function insertEmoji(emoji) {
+  const el = document.getElementById('commentInput');
+  if (!el) return;
+  const pos = el.selectionStart;
+  el.value = el.value.slice(0, pos) + emoji + el.value.slice(pos);
+  el.selectionStart = el.selectionEnd = pos + emoji.length;
+  el.focus();
+  el.dispatchEvent(new Event('input'));
+}
+
+function copyShareLink() {
+  navigator.clipboard.writeText(window.location.href)
+    .then(() => showToast('🔗 Ссылка скопирована!'))
+    .catch(() => showToast('Ошибка копирования', 'error'));
+}
+
+// Auto-expand main comment textarea
+const mainInput = document.getElementById('commentInput');
+if (mainInput) {
+  mainInput.addEventListener('input', function() {
+    this.style.height = 'auto';
+    this.style.height = Math.min(this.scrollHeight, 200) + 'px';
+  });
+  mainInput.addEventListener('keydown', function(e) {
+    if (e.ctrlKey && e.key === 'Enter') submitMainComment();
+  });
+}
+
+window.toggleDescription = function(btn) {
+  const desc = document.getElementById('videoDesc');
+  if (!desc) return;
+  const collapsed = desc.classList.toggle('collapsed');
+  btn.textContent = collapsed ? 'Показать больше' : 'Показать меньше';
+};
+
+// Load comments on page load
+loadComments(1);
+</script>
+{% endblock %}

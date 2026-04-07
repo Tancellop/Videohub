@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+{% block title %}Управление видео{% endblock %}
+{% block content %}
+<div style="display:flex;gap:0;min-height:calc(100vh - var(--nav-h));">
+    <div class="admin-sidebar" style="width:240px;flex-shrink:0;">
+        <div style="padding:16px 20px;font-family:var(--font-display);font-size:18px;letter-spacing:2px;color:var(--accent);border-bottom:1px solid var(--border);margin-bottom:8px;">⚙ УПРАВЛЕНИЕ</div>
+        <nav>
+            <a href="{{ url_for('admin.dashboard') }}" class="admin-nav-item">📊 Дашборд</a>
+            <a href="{{ url_for('admin.users') }}" class="admin-nav-item">👥 Пользователи</a>
+            <a href="{{ url_for('admin.videos') }}" class="admin-nav-item active">🎬 Видео</a>
+            <a href="{{ url_for('admin.categories') }}" class="admin-nav-item">📁 Категории</a>
+            <a href="{{ url_for('admin.reports') }}" class="admin-nav-item">⚠ Жалобы</a>
+            <div style="height:1px;background:var(--border);margin:12px 16px;"></div>
+            <a href="{{ url_for('main.index') }}" class="admin-nav-item">🏠 На сайт</a>
+        </nav>
+    </div>
+    <div style="flex:1;padding:32px;overflow-x:auto;">
+        <h1 class="admin-title">Видео</h1>
+        <form method="get" style="display:flex;gap:12px;margin-bottom:24px;flex-wrap:wrap;">
+            <input type="text" name="search" value="{{ search }}" placeholder="Поиск по названию…" class="form-input" style="max-width:260px;">
+            <select name="type" class="form-select" style="max-width:150px;">
+                <option value="">Все типы</option>
+                <option value="video" {{ 'selected' if type_filter=='video' }}>📹 Видео</option>
+                <option value="short" {{ 'selected' if type_filter=='short' }}>🎞 Shorts</option>
+            </select>
+            <select name="status" class="form-select" style="max-width:160px;">
+                <option value="">Все статусы</option>
+                <option value="published" {{ 'selected' if status_filter=='published' }}>Опубликованные</option>
+                <option value="processing" {{ 'selected' if status_filter=='processing' }}>Обрабатываются</option>
+                <option value="draft" {{ 'selected' if status_filter=='draft' }}>Черновики</option>
+            </select>
+            <button type="submit" class="btn-primary">Найти</button>
+            {% if search or status_filter or type_filter %}<a href="{{ url_for('admin.videos') }}" class="btn-secondary">Сбросить</a>{% endif %}
+        </form>
+        <div style="margin-bottom:12px;font-size:13px;color:var(--text-2);">Найдено: {{ videos.total }} видео</div>
+        <table class="admin-table">
+            <thead><tr><th>ID</th><th>Тип</th><th>Видео</th><th>Автор</th><th>Статус</th><th>Просмотры</th><th>Дата</th><th>Действия</th></tr></thead>
+            <tbody>
+                {% for video in videos.items %}
+                <tr id="video-row-{{ video.id }}">
+                    <td style="color:var(--text-3);font-size:12px;">{{ video.id }}</td>
+                    <td><span class="badge {{ 'badge-warning' if video.is_short else 'badge-secondary' }}" style="font-size:11px;">{{ '🎞 Short' if video.is_short else '📹 Видео' }}</span></td>
+                    <td style="max-width:200px;">
+                        <div style="font-weight:600;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ video.title }}</div>
+                        <div style="font-size:11px;color:var(--text-3);">{{ video.duration_str() }} &bull; {{ video.visibility }}</div>
+                    </td>
+                    <td><a href="{{ url_for('users.profile', username=video.author.username) }}" style="color:var(--blue);font-size:13px;">{{ video.author.username }}</a></td>
+                    <td><span class="badge {% if video.status=='published' %}badge-success{% elif video.status=='processing' %}badge-warning{% else %}badge-secondary{% endif %}">{{ video.status }}</span></td>
+                    <td style="font-size:13px;">
+                        <span id="views-{{ video.id }}">{{ video.views | format_views }}</span>
+                    </td>
+                    <td style="font-size:12px;color:var(--text-2);">{{ video.created_at | format_date }}</td>
+                    <td>
+                        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                            <a href="{{ url_for('videos.watch', slug=video.slug) }}" class="btn-secondary" style="font-size:11px;padding:4px 10px;">👁</a>
+                            <button onclick="openEditVideo({{ video.id }}, '{{ video.title|replace("'","\\'")|replace('"','\\"') }}', {{ video.views }}, '{{ video.visibility }}', '{{ video.status }}')"
+                                    class="btn-secondary" style="font-size:11px;padding:4px 10px;color:var(--blue);">✏️ Ред.</button>
+                            {% if video.status != 'published' %}
+                            <button onclick="adminVideoAction({{ video.id }}, 'publish')" class="btn-secondary" style="font-size:11px;padding:4px 10px;color:var(--green);">✓ Опубл.</button>
+                            {% else %}
+                            <button onclick="adminVideoAction({{ video.id }}, 'unpublish')" class="btn-secondary" style="font-size:11px;padding:4px 10px;">⏸</button>
+                            {% endif %}
+                            <button onclick="adminVideoAction({{ video.id }}, 'delete')" class="btn-secondary" style="font-size:11px;padding:4px 10px;color:var(--accent);">🗑</button>
+                        </div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="8" style="text-align:center;padding:40px;color:var(--text-2);">Видео не найдено</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% if videos.pages > 1 %}
+        <div class="pagination" style="margin-top:24px;">
+            {% for p in videos.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+            {% if p %}<a href="{{ url_for('admin.videos', page=p, search=search, status=status_filter, type=type_filter) }}" class="page-btn {{ 'active' if p == videos.page }}">{{ p }}</a>
+            {% else %}<span class="page-ellipsis">…</span>{% endif %}
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Edit Video Modal -->
+<div id="editVideoModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1000;align-items:center;justify-content:center;">
+    <div style="background:var(--bg-2);border-radius:var(--radius);padding:28px;width:420px;max-width:95vw;border:1px solid var(--border);">
+        <h3 style="margin:0 0 20px;font-size:16px;">✏️ Редактировать видео</h3>
+        <input type="hidden" id="editVideoId">
+        <div style="margin-bottom:14px;">
+            <label style="font-size:13px;color:var(--text-2);display:block;margin-bottom:6px;">Название</label>
+            <input type="text" id="editVideoTitle" class="form-input" style="width:100%;">
+        </div>
+        <div style="margin-bottom:14px;">
+            <label style="font-size:13px;color:var(--text-2);display:block;margin-bottom:6px;">Просмотры</label>
+            <input type="number" id="editVideoViews" class="form-input" style="width:100%;" min="0">
+        </div>
+        <div style="margin-bottom:14px;">
+            <label style="font-size:13px;color:var(--text-2);display:block;margin-bottom:6px;">Видимость</label>
+            <select id="editVideoVisibility" class="form-select" style="width:100%;">
+                <option value="public">🌐 Публичное</option>
+                <option value="unlisted">🔗 По ссылке</option>
+                <option value="private">🔒 Приватное</option>
+            </select>
+        </div>
+        <div style="margin-bottom:20px;">
+            <label style="font-size:13px;color:var(--text-2);display:block;margin-bottom:6px;">Статус</label>
+            <select id="editVideoStatus" class="form-select" style="width:100%;">
+                <option value="published">✅ Опубликовано</option>
+                <option value="draft">📝 Черновик</option>
+                <option value="processing">⏳ Обрабатывается</option>
+            </select>
+        </div>
+        <div style="display:flex;gap:12px;justify-content:flex-end;">
+            <button onclick="closeEditVideo()" class="btn-secondary">Отмена</button>
+            <button onclick="saveEditVideo()" class="btn-primary">💾 Сохранить</button>
+        </div>
+    </div>
+</div>
+
+<script>
+function openEditVideo(id, title, views, visibility, status) {
+    document.getElementById('editVideoId').value = id;
+    document.getElementById('editVideoTitle').value = title;
+    document.getElementById('editVideoViews').value = views;
+    document.getElementById('editVideoVisibility').value = visibility;
+    document.getElementById('editVideoStatus').value = status;
+    document.getElementById('editVideoModal').style.display = 'flex';
+}
+function closeEditVideo() {
+    document.getElementById('editVideoModal').style.display = 'none';
+}
+async function saveEditVideo() {
+    const id = document.getElementById('editVideoId').value;
+    const data = {
+        action: 'edit',
+        title: document.getElementById('editVideoTitle').value,
+        views: parseInt(document.getElementById('editVideoViews').value),
+        visibility: document.getElementById('editVideoVisibility').value,
+        status: document.getElementById('editVideoStatus').value,
+    };
+    const res = await fetch(`/admin/videos/${id}/action`, {
+        method: 'POST',
+        headers: {'Content-Type':'application/json','X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content},
+        body: JSON.stringify(data)
+    });
+    const json = await res.json();
+    if (json.success) {
+        closeEditVideo();
+        location.reload();
+    } else {
+        alert(json.error || 'Ошибка');
+    }
+}
+async function adminVideoAction(id, action) {
+    if (action === 'delete' && !confirm('Удалить видео?')) return;
+    const res = await fetch(`/admin/videos/${id}/action`, {
+        method: 'POST',
+        headers: {'Content-Type':'application/json','X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content},
+        body: JSON.stringify({action})
+    });
+    const json = await res.json();
+    if (json.success) {
+        if (action === 'delete') document.getElementById(`video-row-${id}`)?.remove();
+        else location.reload();
+    } else {
+        alert(json.error || 'Ошибка');
+    }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,207 @@
+{% extends "base.html" %}
+{% block title %}Настройки{% endblock %}
+
+{% block content %}
+<div style="max-width:700px;margin:0 auto;">
+    <h1 style="font-family:var(--font-display);font-size:36px;letter-spacing:3px;margin-bottom:32px;">
+        Настройки <span style="color:var(--accent)">Профиля</span>
+    </h1>
+
+    <!-- Profile Settings -->
+    <div style="background:var(--bg-1);border:1px solid var(--border);border-radius:var(--radius-lg);padding:32px;margin-bottom:24px;">
+        <h2 style="font-size:18px;font-weight:700;margin-bottom:24px;display:flex;align-items:center;gap:10px;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 1 0-16 0"/></svg>
+            Данные профиля
+        </h2>
+        
+        <form method="POST" enctype="multipart/form-data">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="action" value="profile">
+            
+            <!-- Avatar -->
+            <div style="display:flex;align-items:center;gap:20px;margin-bottom:24px;">
+                <div style="width:80px;height:80px;border-radius:50%;overflow:hidden;border:3px solid var(--border);background:var(--bg-3);" id="avatarPreview">
+                    <img src="{{ url_for('static', filename='uploads/avatars/' + current_user.avatar) if current_user.avatar and current_user.avatar != 'default_avatar.png' else url_for('static', filename='img/default_avatar.png') }}"
+                         style="width:100%;height:100%;object-fit:cover;" alt=""
+                         onerror="this.src='{{ url_for('static', filename='img/default_avatar.png') }}'">
+                </div>
+                <div>
+                    <input type="file" name="avatar" id="avatarInput" accept="image/*" style="display:none;" 
+                           onchange="previewAvatar(this)">
+                    <button type="button" class="btn-secondary" onclick="document.getElementById('avatarInput').click()">
+                        Изменить аватар
+                    </button>
+                    <div class="form-hint" style="margin-top:6px;">JPG, PNG, GIF — до 5 МБ</div>
+                </div>
+            </div>
+            
+            <div class="form-group" style="margin-bottom:16px;">
+                <label class="form-label">Отображаемое имя</label>
+                <input type="text" class="form-input" name="display_name" 
+                       value="{{ current_user.display_name or '' }}"
+                       placeholder="Ваше имя на канале" maxlength="100">
+            </div>
+            
+            <div class="form-group" style="margin-bottom:16px;">
+                <label class="form-label">О себе</label>
+                <textarea class="form-textarea" name="bio" rows="4"
+                          placeholder="Расскажите о своём канале…" maxlength="500">{{ current_user.bio or '' }}</textarea>
+                <div class="form-hint">До 500 символов</div>
+            </div>
+            
+            <div style="background:var(--bg-2);padding:16px;border-radius:var(--radius-sm);margin-bottom:20px;font-size:13px;color:var(--text-2);">
+                <strong style="color:var(--text-1);">@{{ current_user.username }}</strong> — имя пользователя нельзя изменить<br>
+                <strong style="color:var(--text-1);">{{ current_user.email }}</strong> — email аккаунта
+            </div>
+            
+            <button type="submit" class="btn-primary">Сохранить изменения</button>
+        </form>
+    </div>
+
+    <!-- Banner Settings -->
+    <div style="background:var(--bg-1);border:1px solid var(--border);border-radius:var(--radius-lg);padding:32px;margin-bottom:24px;">
+        <h2 style="font-size:18px;font-weight:700;margin-bottom:8px;display:flex;align-items:center;gap:10px;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="m3 9 4-4 4 4 4-4 4 4"/><path d="M3 15h18"/></svg>
+            Баннер канала
+        </h2>
+        <p style="color:var(--text-2);font-size:13px;margin-bottom:20px;">
+            Баннер отображается в верхней части вашего профиля (как на YouTube). Рекомендуемый размер: 2560×1440px, формат JPG или PNG.
+        </p>
+
+        <!-- Current banner preview -->
+        <div style="width:100%;height:180px;background:linear-gradient(135deg,var(--bg-2),var(--bg-3));border-radius:var(--radius);border:1px solid var(--border);overflow:hidden;margin-bottom:20px;position:relative;" id="bannerPreviewWrap">
+            {% if current_user.banner %}
+            <img src="{{ url_for('users.serve_banner', filename=current_user.banner) }}"
+                 id="bannerPreviewImg"
+                 style="width:100%;height:100%;object-fit:cover;" alt="">
+            {% else %}
+            <div id="bannerPlaceholder" style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--text-3);gap:8px;">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="m3 9 4-4 4 4 4-4 4 4"/></svg>
+                <span style="font-size:13px;">Баннер не установлен</span>
+            </div>
+            {% endif %}
+            <!-- Overlay guides (decorative) -->
+            <div style="position:absolute;inset:0;pointer-events:none;display:flex;align-items:center;justify-content:center;">
+                <div style="border:2px dashed rgba(255,255,255,0.1);border-radius:4px;width:80%;height:70%;"></div>
+            </div>
+        </div>
+
+        <form method="POST" enctype="multipart/form-data" style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="action" value="banner">
+            <input type="file" name="banner" id="bannerInput" accept="image/jpeg,image/png,image/gif,image/webp"
+                   style="display:none;" onchange="previewBanner(this)">
+            <button type="button" class="btn-primary" onclick="document.getElementById('bannerInput').click()">
+                🖼 {{ 'Изменить баннер' if current_user.banner else 'Загрузить баннер' }}
+            </button>
+            <button type="submit" id="bannerSubmitBtn" class="btn-secondary" style="display:none;">
+                💾 Сохранить баннер
+            </button>
+            {% if current_user.banner %}
+            <form method="POST" style="display:inline;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="action" value="delete_banner">
+                <button type="submit" class="btn-secondary" style="color:var(--accent);"
+                        onclick="return confirm('Удалить баннер?')">
+                    🗑 Удалить баннер
+                </button>
+            </form>
+            {% endif %}
+            <div class="form-hint">JPG, PNG, GIF, WEBP · Максимум 5 МБ · Рекомендуется 2560×1440px</div>
+        </form>
+    </div>
+
+
+    <div style="background:var(--bg-1);border:1px solid var(--border);border-radius:var(--radius-lg);padding:32px;margin-bottom:24px;">
+        <h2 style="font-size:18px;font-weight:700;margin-bottom:24px;display:flex;align-items:center;gap:10px;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            Безопасность
+        </h2>
+        
+        <form method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="action" value="password">
+            
+            <div class="form-group" style="margin-bottom:16px;">
+                <label class="form-label">Текущий пароль</label>
+                <input type="password" class="form-input" name="current_password" 
+                       placeholder="Введите текущий пароль" required>
+            </div>
+            
+            <div class="form-group" style="margin-bottom:16px;">
+                <label class="form-label">Новый пароль</label>
+                <input type="password" class="form-input" name="new_password" 
+                       placeholder="Минимум 8 символов" required minlength="8">
+            </div>
+            
+            <div class="form-group" style="margin-bottom:20px;">
+                <label class="form-label">Подтвердите новый пароль</label>
+                <input type="password" class="form-input" name="confirm_password" 
+                       placeholder="Повторите новый пароль" required>
+            </div>
+            
+            <button type="submit" class="btn-primary">Изменить пароль</button>
+        </form>
+    </div>
+
+    <!-- Danger Zone -->
+    <div style="background:rgba(232,70,70,0.05);border:1px solid rgba(232,70,70,0.2);border-radius:var(--radius-lg);padding:32px;">
+        <h2 style="font-size:18px;font-weight:700;margin-bottom:8px;color:var(--accent);">
+            ⚠ Опасная зона
+        </h2>
+        <p style="font-size:14px;color:var(--text-2);margin-bottom:20px;">
+            Эти действия необратимы. Будьте осторожны.
+        </p>
+        <button class="btn-secondary" style="color:var(--accent);border-color:var(--accent);" 
+                onclick="if(confirm('Удалить аккаунт навсегда? Все видео и данные будут потеряны!')) alert('Функция в разработке.')">
+            🗑 Удалить аккаунт
+        </button>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function previewAvatar(input) {
+    if (input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = e => {
+            const preview = document.getElementById('avatarPreview');
+            preview.innerHTML = `<img src="${e.target.result}" style="width:100%;height:100%;object-fit:cover;">`;
+        };
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+
+function previewBanner(input) {
+    if (!input.files[0]) return;
+    // Validate size
+    if (input.files[0].size > 5 * 1024 * 1024) {
+        showToast('Файл слишком большой. Максимум 5 МБ.', 'error');
+        input.value = '';
+        return;
+    }
+    const reader = new FileReader();
+    reader.onload = e => {
+        const wrap = document.getElementById('bannerPreviewWrap');
+        const placeholder = document.getElementById('bannerPlaceholder');
+        if (placeholder) placeholder.style.display = 'none';
+        
+        // Show preview
+        let img = document.getElementById('bannerPreviewImg');
+        if (!img) {
+            img = document.createElement('img');
+            img.id = 'bannerPreviewImg';
+            img.style.cssText = 'width:100%;height:100%;object-fit:cover;position:absolute;inset:0;';
+            wrap.prepend(img);
+        }
+        img.src = e.target.result;
+        
+        // Show save button
+        document.getElementById('bannerSubmitBtn').style.display = 'inline-flex';
+        showToast('Нажмите «Сохранить баннер» для применения.');
+    };
+    reader.readAsDataURL(input.files[0]);
+}
+</script>
+{% endblock %}

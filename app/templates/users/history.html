@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}История просмотров{% endblock %}
+{% block content %}
+<h1 style="font-family:var(--font-display);font-size:36px;letter-spacing:3px;margin-bottom:24px;">История <span style="color:var(--accent)">Просмотров</span></h1>
+{% if history.items %}
+<div class="video-grid">
+{% for h in history.items %}{% set video = h.video %}{% if video %}{% include 'partials/video_card.html' %}{% endif %}{% endfor %}
+</div>
+{% else %}
+<div class="empty-state"><div class="empty-icon">🕐</div><div class="empty-title">История пуста</div><div class="empty-subtitle">Смотрите видео — они появятся здесь</div></div>
+{% endif %}
+{% endblock %}

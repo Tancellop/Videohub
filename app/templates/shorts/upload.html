@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+{% block title %}Загрузить Short{% endblock %}
+
+{% block content %}
+<div style="max-width:520px;margin:0 auto;">
+  <h1 style="font-family:var(--font-display);font-size:40px;letter-spacing:3px;margin-bottom:8px;">
+    📱 Загрузить <span style="color:var(--accent)">Short</span>
+  </h1>
+  <p style="color:var(--text-2);margin-bottom:28px;">
+    Вертикальное видео (9:16) до 60 секунд. Попадёт в ленту Shorts у всех пользователей.
+  </p>
+
+  <div style="background:rgba(232,70,70,.06);border:1px solid rgba(232,70,70,.2);border-radius:var(--radius);padding:14px 18px;margin-bottom:24px;font-size:13px;color:var(--text-1);">
+    💡 Рекомендации: разрешение <strong>1080×1920</strong>, формат <strong>MP4</strong>, длина <strong>до 60 секунд</strong>, ориентация <strong>вертикальная</strong>.
+  </div>
+
+  <form method="POST" enctype="multipart/form-data" id="shortForm">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <!-- Drop zone -->
+    <div class="drop-zone" id="dropZone" style="padding:40px 24px;margin-bottom:24px;border-radius:var(--radius-lg);">
+      <input type="file" name="video" id="videoFile" accept="video/*" required>
+      <div class="drop-content" style="text-align:center;">
+        <div style="font-size:56px;margin-bottom:12px;">📱</div>
+        <div style="font-family:var(--font-display);font-size:22px;letter-spacing:2px;">Выберите видео</div>
+        <div style="color:var(--text-2);font-size:13px;margin-top:6px;">Перетащите или нажмите</div>
+        <div style="color:var(--text-3);font-size:11px;margin-top:8px;">MP4, MOV, WEBM — до 500 МБ</div>
+      </div>
+    </div>
+
+    <div id="shortFields" style="display:none;flex-direction:column;gap:16px;">
+      <!-- Preview + form side by side -->
+      <div style="display:flex;gap:16px;align-items:flex-start;">
+        <!-- Portrait preview -->
+        <div id="videoPreview" style="width:120px;flex-shrink:0;aspect-ratio:9/16;background:#000;border-radius:8px;overflow:hidden;display:flex;align-items:center;justify-content:center;">
+          <video id="previewVid" style="width:100%;height:100%;object-fit:cover;" muted loop playsinline></video>
+        </div>
+        <!-- Fields -->
+        <div style="flex:1;display:flex;flex-direction:column;gap:12px;">
+          <div class="form-group">
+            <label class="form-label">Название *</label>
+            <input type="text" class="form-input" id="shortTitle" name="title"
+                   placeholder="Что происходит в этом Short?" required maxlength="200">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Теги</label>
+            <input type="text" class="form-input" name="tags"
+                   placeholder="тренд, смешное, интересное">
+            <span class="form-hint">До 10 тегов через запятую</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Progress -->
+      <div class="upload-progress" id="uploadProgress" style="display:none;">
+        <div style="display:flex;justify-content:space-between;margin-bottom:8px;font-size:14px;">
+          <span id="progressLabel">Загрузка…</span>
+          <span id="progressPct">0%</span>
+        </div>
+        <div class="progress-bar-track">
+          <div class="progress-bar-fill" id="progressBar"></div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:10px;">
+        <button type="button" class="btn-secondary" onclick="resetShortForm()">Отмена</button>
+        <button type="submit" class="btn-primary" id="submitBtn">🚀 Опубликовать Short</button>
+      </div>
+    </div>
+  </form>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+initUpload();
+
+document.getElementById('videoFile').addEventListener('change', function() {
+  if (!this.files[0]) return;
+  const url = URL.createObjectURL(this.files[0]);
+  const vid  = document.getElementById('previewVid');
+  vid.src = url;
+  vid.play().catch(()=>{});
+
+  // Auto-fill title
+  const titleInput = document.getElementById('shortTitle');
+  if (!titleInput.value) {
+    titleInput.value = this.files[0].name.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ');
+  }
+  document.getElementById('shortFields').style.display = 'flex';
+  document.getElementById('dropZone').style.padding = '12px 16px';
+  document.querySelector('.drop-content').innerHTML =
+    `<div style="font-size:14px;color:var(--text-1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(this.files[0].name)}</div>`;
+});
+
+document.getElementById('shortForm').addEventListener('submit', function(e) {
+  e.preventDefault();
+  const file  = document.getElementById('videoFile').files[0];
+  if (!file) return;
+  const title = document.getElementById('shortTitle').value.trim();
+  if (!title) { showToast('Укажите название.', 'error'); return; }
+
+  const formData = new FormData(this);
+  const xhr = new XMLHttpRequest();
+  const progress = document.getElementById('uploadProgress');
+  const bar = document.getElementById('progressBar');
+  const pct = document.getElementById('progressPct');
+  const btn = document.getElementById('submitBtn');
+
+  progress.style.display = 'block';
+  btn.disabled = true;
+  btn.textContent = 'Загрузка…';
+
+  xhr.upload.addEventListener('progress', e => {
+    if (e.lengthComputable) {
+      const p = Math.round(e.loaded / e.total * 100);
+      bar.style.width = p + '%';
+      pct.textContent = p + '%';
+    }
+  });
+
+  xhr.addEventListener('load', () => {
+    if (xhr.responseURL && xhr.responseURL !== window.location.href) {
+      window.location.href = xhr.responseURL;
+    } else {
+      window.location.href = '/shorts/';
+    }
+  });
+
+  xhr.addEventListener('error', () => {
+    showToast('Ошибка загрузки.', 'error');
+    btn.disabled = false;
+    btn.textContent = '🚀 Опубликовать Short';
+  });
+
+  xhr.open('POST', this.action || window.location.href);
+  xhr.send(formData);
+});
+
+function resetShortForm() {
+  document.getElementById('videoFile').value = '';
+  document.getElementById('shortFields').style.display = 'none';
+  document.getElementById('previewVid').src = '';
+}
+
+function escapeHtml(t) {
+  const d = document.createElement('div');
+  d.appendChild(document.createTextNode(String(t||'')));
+  return d.innerHTML;
+}
+</script>
+{% endblock %}
