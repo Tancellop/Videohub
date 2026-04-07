@@ -1,5 +1,7 @@
 """Shorts blueprint — /shorts  (vertical video ≤ 60 sec)"""
-import os, uuid, re
+import os, uuid, re, tempfile
+import cloudinary
+import cloudinary.uploader
 from flask import (Blueprint, render_template, redirect, url_for,
                    flash, request, jsonify, current_app, abort)
 from flask_login import login_required, current_user
@@ -75,17 +77,17 @@ def upload():
             return redirect(request.url)
 
         ext      = file.filename.rsplit('.', 1)[1].lower()
-        filename = f'{uuid.uuid4().hex}.{ext}'
-        filepath = os.path.join(current_app.config['VIDEO_FOLDER'], filename)
-        file.save(filepath)
+        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=f'.{ext}')
+        file.save(temp_file.name)
+        temp_file.close()
+        temp_path = temp_file.name
 
         short = Video(
             title=title,
-            filename=filename,
+            filename='',
             user_id=current_user.id,
             visibility='public',
             is_short=True,
-            file_size=os.path.getsize(filepath),
             status='processing'
         )
         db.session.add(short)
@@ -97,17 +99,49 @@ def upload():
             if tag and tag not in short.tags:
                 short.tags.append(tag)
 
+        cloudinary.config(
+            cloud_name=current_app.config['CLOUDINARY_CLOUD_NAME'],
+            api_key=current_app.config['CLOUDINARY_API_KEY'],
+            api_secret=current_app.config['CLOUDINARY_API_SECRET'],
+        )
+
+        try:
+            upload_result = cloudinary.uploader.upload_large(
+                temp_path,
+                resource_type='video',
+                public_id=f'videohub/shorts/{uuid.uuid4().hex}',
+                chunk_size=6 * 1024 * 1024,
+                overwrite=True
+            )
+            video_url = upload_result.get('secure_url') or upload_result.get('url')
+            if not video_url:
+                raise ValueError('Cloudinary upload did not return a video URL')
+            short.filename = video_url
+            short.file_size = upload_result.get('bytes') or os.path.getsize(temp_path)
+        except Exception as e:
+            current_app.logger.error(f'Cloudinary upload error: {e}')
+            if os.path.exists(temp_path):
+                os.remove(temp_path)
+            flash('Не удалось загрузить короткое видео. Повторите попытку.', 'error')
+            return redirect(request.url)
+
         db.session.commit()
 
         # Process (thumbnail + duration detection)
         try:
             from app.utils.video_processor import process_video
-            process_video(short, filepath, current_app.config)
+            process_video(short, temp_path, current_app.config)
         except Exception as e:
             current_app.logger.error(f'Short processing error: {e}')
             short.status = 'published'
             short.published_at = datetime.now(timezone.utc)
             db.session.commit()
+        finally:
+            try:
+                if os.path.exists(temp_path):
+                    os.remove(temp_path)
+            except Exception:
+                pass
 
         flash('Shorts загружен!', 'success')
         return redirect(url_for('shorts.feed'))

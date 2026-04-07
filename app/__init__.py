@@ -116,7 +116,7 @@ def _migrate_columns():
             pass
         # Verify all existing users — email verification is disabled
         try:
-            conn.execute(text('UPDATE users SET is_verified = 1 WHERE is_verified = 0'))
+            conn.execute(text('UPDATE users SET is_verified = TRUE WHERE is_verified = FALSE'))
             conn.commit()
         except Exception:
             pass

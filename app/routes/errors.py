@@ -35,6 +35,11 @@ def register_errors(app):
     
     @app.errorhandler(500)
     def internal_error(e):
+        from app import db
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
         if request.path.startswith('/api/'):
             return jsonify({'error': 'Internal server error'}), 500
         return render_template('errors/500.html'), 500

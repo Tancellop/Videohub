@@ -1,5 +1,8 @@
 import os
+import tempfile
 import uuid
+import cloudinary
+import cloudinary.uploader
 from flask import (Blueprint, render_template, redirect, url_for, flash, 
                    request, current_app, jsonify, abort, send_from_directory)
 from flask_login import login_required, current_user
@@ -73,19 +76,35 @@ def upload():
             flash('Заголовок видео обязателен.', 'error')
             return redirect(request.url)
         
-        # Save file
+        # Save file to a temp path and upload to Cloudinary
         ext = file.filename.rsplit('.', 1)[1].lower()
-        unique_filename = f'{uuid.uuid4().hex}.{ext}'
-        filepath = os.path.join(current_app.config['VIDEO_FOLDER'], unique_filename)
-        file.save(filepath)
-        
-        file_size = os.path.getsize(filepath)
+        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=f'.{ext}')
+        file.save(temp_file.name)
+        temp_file.close()
+        temp_path = temp_file.name
+
+        cloudinary.config(
+            cloud_name=current_app.config['CLOUDINARY_CLOUD_NAME'],
+            api_key=current_app.config['CLOUDINARY_API_KEY'],
+            api_secret=current_app.config['CLOUDINARY_API_SECRET'],
+        )
+
+        upload_result = cloudinary.uploader.upload_large(
+            temp_path,
+            resource_type='video',
+            public_id=f'videohub/videos/{uuid.uuid4().hex}',
+            chunk_size=6 * 1024 * 1024,
+            overwrite=True
+        )
+
+        video_url = upload_result.get('secure_url') or upload_result.get('url')
+        file_size = upload_result.get('bytes') or os.path.getsize(temp_path)
         
         # Create video record
         video = Video(
             title=title,
             description=description,
-            filename=unique_filename,
+            filename=video_url,
             user_id=current_user.id,
             category_id=category_id,
             visibility=visibility,
@@ -109,7 +128,7 @@ def upload():
         
         # Process video (thumbnail + metadata)
         try:
-            process_video(video, filepath, current_app.config)
+            process_video(video, temp_path, current_app.config)
             flash('Видео успешно загружено и обрабатывается!', 'success')
         except Exception as e:
             current_app.logger.error(f'Video processing error: {e}')
@@ -117,6 +136,12 @@ def upload():
             video.published_at = datetime.now(timezone.utc)
             db.session.commit()
             flash('Видео загружено (обработка в упрощённом режиме).', 'success')
+        finally:
+            try:
+                if os.path.exists(temp_path):
+                    os.remove(temp_path)
+            except Exception:
+                pass
         
         # Notify subscribers
         for subscriber in current_user.subscribers.all():
@@ -356,9 +381,10 @@ def delete(video_id):
     
     # Delete files
     try:
-        filepath = os.path.join(current_app.config['VIDEO_FOLDER'], video.filename)
-        if os.path.exists(filepath):
-            os.remove(filepath)
+        if video.filename and not video.filename.startswith(('http://', 'https://')):
+            filepath = os.path.join(current_app.config['VIDEO_FOLDER'], video.filename)
+            if os.path.exists(filepath):
+                os.remove(filepath)
         if video.thumbnail:
             thumb_path = os.path.join(current_app.config['THUMBNAIL_FOLDER'], video.thumbnail)
             if os.path.exists(thumb_path):

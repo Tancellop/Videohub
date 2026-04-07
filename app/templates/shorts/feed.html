@@ -282,8 +282,8 @@
          data-likes="{{ short.like_count() }}">
 
       <video class="short-video" id="vid{{ short.id }}"
-             loop playsinline preload="none"
-             src="{{ url_for('videos.serve_video', filename=short.filename) }}"
+             loop muted playsinline preload="none"
+             src="{% if short.filename.startswith('http') %}{{ short.filename }}{% else %}{{ url_for('videos.serve_video', filename=short.filename) }}{% endif %}"
              {% if short.thumbnail %}poster="{{ url_for('videos.serve_thumbnail', filename=short.thumbnail) }}"{% endif %}
              onclick="togglePlay(this)">
       </video>
@@ -294,7 +294,7 @@
       </div>
 
       <!-- Progress bar -->
-      <div class="short-progress" id="prog{{ short.id }}" onclick="seekVideo(event, {{ short.id }})">
+      <div class="short-progress" id="prog{{ short.id }}" data-short-id="{{ short.id }}">
         <div class="short-progress-fill" id="fill{{ short.id }}"></div>
       </div>
 
@@ -333,7 +333,8 @@
         <!-- Like -->
         <button class="sa-btn {{ 'liked' if short.id in liked_ids else '' }}"
                 id="likeBtn{{ short.id }}"
-                onclick="likeShort({{ short.id }}, this)"
+                data-action="like"
+                data-short-id="{{ short.id }}"
                 aria-label="Лайк">
           <div class="ic">
             <svg width="22" height="22" viewBox="0 0 24 24"
@@ -347,7 +348,8 @@
 
         <!-- Comments -->
         <button class="sa-btn"
-                onclick="openComments({{ short.id }}, this)"
+                data-action="comments"
+                data-short-id="{{ short.id }}"
                 aria-label="Комментарии"
                 data-title="{{ short.title | e }}">
           <div class="ic">
@@ -360,7 +362,8 @@
 
         <!-- Share -->
         <button class="sa-btn"
-                onclick="shareShort('{{ url_for('videos.watch', slug=short.slug, _external=True) }}')"
+                data-action="share"
+                data-share-url="{{ url_for('videos.watch', slug=short.slug, _external=True) }}"
                 aria-label="Поделиться">
           <div class="ic">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -373,15 +376,15 @@
         </button>
 
         <!-- Mute toggle -->
-        <button class="sa-btn" id="muteBtn{{ short.id }}"
-                onclick="toggleMute({{ short.id }}, this)"
-                aria-label="Звук">
-          <div class="ic">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                 id="muteSvg{{ short.id }}">
-              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
-              <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
-              <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+        <button  class         = "sa-btn" id = "muteBtn{{ short.id }}"
+                 data-action   = "mute"
+                 data-short-id = "{{ short.id }}"></button>
+        <div     class         = "ic">
+        <svg     width         = "22" height = "22" viewBox = "0 0 24 24" fill = "none" stroke = "currentColor" stroke-width = "2"
+                 id            = "muteSvg{{ short.id }}">
+        <polygon points        = "11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+        <path    d             = "M15.54 8.46a5 5 0 0 1 0 7.07"/>
+        <path    d             = "M19.07 4.93a10 10 0 0 1 0 14.14"/>
             </svg>
           </div>
           <span class="lbl" id="muteLbl{{ short.id }}">Звук</span>
@@ -470,10 +473,10 @@
 {% block extra_scripts %}
 <script>
 // ── State ─────────────────────────────────────────────────────
-const IS_AUTH     = {{ 'true' if current_user.is_authenticated else 'false' }};
-let   currentCmtId = null;
-let   currentPage  = {{ shorts.page }};
-let   hasMore      = {{ 'true' if shorts.has_next else 'false' }};
+const IS_AUTH       = {{ 'true' if current_user.is_authenticated else 'false' }};
+let   currentCmtId  = null;
+let   currentPage   = {{ shorts.page }};
+let   hasMore       = {{ 'true' if shorts.has_next else 'false' }};
 let   isLoadingMore = false;
 
 // ── Fix HTML entity bug: set titles via textContent ───────────
@@ -504,6 +507,36 @@ const playObserver = new IntersectionObserver((entries) => {
 });
 
 document.querySelectorAll('.short-slide').forEach(s => playObserver.observe(s));
+
+document.getElementById('shortsFeed')?.addEventListener('click', event => {
+  const button = event.target.closest('[data-action]');
+  if (button) {
+    const action = button.dataset.action;
+    const shortId = button.dataset.shortId;
+    if (action === 'like' && shortId) {
+      likeShort(shortId, button);
+      return;
+    }
+    if (action === 'comments' && shortId) {
+      openComments(shortId, button);
+      return;
+    }
+    if (action === 'share') {
+      const shareUrl = button.dataset.shareUrl;
+      if (shareUrl) shareShort(shareUrl);
+      return;
+    }
+    if (action === 'mute' && shortId) {
+      toggleMute(shortId, button);
+      return;
+    }
+  }
+
+  const progress = event.target.closest('.short-progress');
+  if (progress && progress.dataset.shortId) {
+    seekVideo(event, progress.dataset.shortId);
+  }
+});
 
 // ── Progress bar ──────────────────────────────────────────────
 const progressTimers = {};
@@ -783,12 +816,21 @@ function appendShort(s) {
   div.className    = 'short-slide';
   div.dataset.id   = s.id;
   div.dataset.liked = 'false';
-  div.dataset.likes = s.likes;
+  div.dataset.likes = s.likes || 0;
+
+  const filename = typeof s.filename === 'string' ? s.filename : '';
+  const isRemote = filename.startsWith('http');
+  const thumbnail = typeof s.thumbnail === 'string' ? s.thumbnail : '';
+  const tagsHtml = Array.isArray(s.tags) ? s.tags.slice(0,5).map(t => `<span class="short-tag">#${escapeHtml(t)}</span>`).join('') : '';
+  const username = escapeHtml(s.username || '');
+  const author = escapeHtml(s.author || '');
+  const title = escapeHtml(s.title || '');
+  const slug = escapeHtml(s.slug || '');
 
   div.innerHTML = `
-    <video class="short-video" id="vid${s.id}" loop playsinline preload="none"
-           src="/videos/serve/${escapeHtml(s.filename)}"
-           ${s.thumbnail ? `poster="/videos/thumbnail/${escapeHtml(s.thumbnail)}"` : ''}
+    <video class="short-video" id="vid${s.id}" loop muted playsinline preload="none"
+           src="${isRemote ? escapeHtml(filename) : '/videos/serve/' + escapeHtml(filename)}"
+           ${thumbnail ? `poster="/videos/thumbnail/${escapeHtml(thumbnail)}"` : ''}
            onclick="togglePlay(this)"></video>
     <div class="play-flash" id="flash${s.id}">
       <svg width="28" height="28" viewBox="0 0 24 24" fill="#fff"><polygon points="5 3 19 12 5 21 5 3"/></svg>
@@ -806,13 +848,13 @@ function appendShort(s) {
     </div>
     <div class="short-info">
       <div class="short-author-row">
-        <a href="/users/${escapeHtml(s.username)}" class="short-author-avatar">
+        <a href="/users/${username}" class="short-author-avatar">
           <img src="/static/img/default_avatar.png" style="width:100%;height:100%;object-fit:cover;" alt="">
         </a>
-        <span class="short-author-name">${escapeHtml(s.author)}</span>
+        <span class="short-author-name">${author}</span>
       </div>
-      <div class="short-title-txt">${escapeHtml(s.title)}</div>
-      <div class="short-tags-row">${s.tags.slice(0,5).map(t=>`<span class="short-tag">#${escapeHtml(t)}</span>`).join('')}</div>
+      <div class="short-title-txt">${title}</div>
+      <div class="short-tags-row">${tagsHtml}</div>
     </div>
     <div class="short-actions">
       <button class="sa-btn" id="likeBtn${s.id}" onclick="likeShort(${s.id},this)" aria-label="Лайк">
@@ -821,9 +863,9 @@ function appendShort(s) {
             <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
           </svg>
         </div>
-        <span class="lbl" id="likeCount${s.id}">${s.likes}</span>
+        <span class="lbl" id="likeCount${s.id}">${s.likes || 0}</span>
       </button>
-      <button class="sa-btn" onclick="openComments(${s.id},this)" aria-label="Комментарии" data-title="${escapeHtml(s.title)}">
+      <button class="sa-btn" onclick="openComments(${s.id},this)" aria-label="Комментарии" data-title="${title}">
         <div class="ic">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
@@ -831,7 +873,7 @@ function appendShort(s) {
         </div>
         <span class="lbl">0</span>
       </button>
-      <button class="sa-btn" onclick="shareShort('/videos/watch/${escapeHtml(s.slug)}')" aria-label="Поделиться">
+      <button class="sa-btn" onclick="shareShort('/videos/watch/${slug}')" aria-label="Поделиться">
         <div class="ic">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>

@@ -134,7 +134,11 @@
         {% if video.has_1080p %}<source src="{{ url_for('static', filename='uploads/videos/' + video.id|string + '_1080p.mp4') }}" type="video/mp4">{% endif %}
         {% if video.has_720p  %}<source src="{{ url_for('static', filename='uploads/videos/' + video.id|string + '_720p.mp4') }}"  type="video/mp4">{% endif %}
         {% if video.has_360p  %}<source src="{{ url_for('static', filename='uploads/videos/' + video.id|string + '_360p.mp4') }}"  type="video/mp4">{% endif %}
-        <source src="{{ url_for('videos.serve_video', filename=video.filename) }}" type="video/mp4">
+        {% if video.filename.startswith('http') %}
+          <source src="{{ video.filename }}" type="video/mp4">
+        {% else %}
+          <source src="{{ url_for('videos.serve_video', filename=video.filename) }}" type="video/mp4">
+        {% endif %}
       </video>
       {% else %}
       <div style="aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;background:var(--bg-2);">
