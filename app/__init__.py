@@ -99,7 +99,7 @@ def _migrate_columns():
     cols = [
         ('videos', 'is_short', 'BOOLEAN', 'FALSE'),
         ('streams', 'saved_video_id', 'INTEGER', 'NULL'),
-        ('view_history', 'session_id', 'VARCHAR(128)', 'NULL'),
+        ('view_history', 'session_id', 'TEXT', 'NULL'),
     ]
     with db.engine.connect() as conn:
         for table, column, ctype, default in cols:
@@ -108,6 +108,12 @@ def _migrate_columns():
                 conn.commit()
             except Exception:
                 pass
+        # Widen session_id if it's still VARCHAR(128)
+        try:
+            conn.execute(text('ALTER TABLE view_history ALTER COLUMN session_id TYPE TEXT'))
+            conn.commit()
+        except Exception:
+            pass
         # Verify all existing users — email verification is disabled
         try:
             conn.execute(text('UPDATE users SET is_verified = 1 WHERE is_verified = 0'))

@@ -181,7 +181,7 @@ class ViewHistory(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
     video_id = db.Column(db.Integer, db.ForeignKey('videos.id'), nullable=False)
     ip_address = db.Column(db.String(45))
-    session_id = db.Column(db.String(128))
+    session_id = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     video = db.relationship('Video')
 
