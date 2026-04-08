@@ -94,10 +94,16 @@ def upload():
             resource_type='video',
             public_id=f'videohub/videos/{uuid.uuid4().hex}',
             chunk_size=6 * 1024 * 1024,
-            overwrite=True
+            overwrite=True,
+            format='mp4',
+            transformation=[{'quality': 'auto', 'fetch_format': 'mp4'}]
         )
 
         video_url = upload_result.get('secure_url') or upload_result.get('url')
+        # Принудительно убеждаемся что URL ведёт на mp4
+        if video_url and not video_url.endswith('.mp4'):
+            import re as _re
+            video_url = _re.sub(r'\.[^./?]+(\?.*)?$', r'.mp4\1', video_url)
         file_size = upload_result.get('bytes') or os.path.getsize(temp_path)
         
         # Create video record
@@ -165,13 +171,11 @@ def upload():
 def watch(slug):
     video = Video.query.filter_by(slug=slug).first_or_404()
 
-    # Restrict access to unpublished or private videos
     if video.status != 'published' or video.visibility == 'private':
         if not current_user.is_authenticated or \
            (current_user.id != video.user_id and not current_user.is_moderator):
             abort(403)
 
-    # Track view — deduplicate by IP within the last 24 hours
     ip = request.environ.get('HTTP_X_FORWARDED_FOR', request.remote_addr)
     if ip and ',' in ip:
         ip = ip.split(',')[0].strip()
@@ -195,14 +199,12 @@ def watch(slug):
         db.session.add(view)
         db.session.commit()
     
-    # Get comments
     comments = Comment.query.filter_by(
         video_id=video.id, 
         parent_id=None,
         is_hidden=False
     ).order_by(desc(Comment.is_pinned), desc(Comment.created_at)).all()
     
-    # Related videos
     related = Video.query.filter(
         Video.id != video.id,
         Video.status == 'published',
@@ -288,7 +290,6 @@ def add_comment(video_id):
     )
     db.session.add(comment)
 
-    # Notify video owner
     if video.user_id != current_user.id:
         notif = Notification(
             user_id=video.user_id,
@@ -344,7 +345,6 @@ def edit(video_id):
         video.category_id = request.form.get('category_id', type=int)
         video.visibility = request.form.get('visibility', 'public')
         
-        # Update tags
         tags_str = request.form.get('tags', '')
         video.tags = []
         if tags_str:
@@ -353,7 +353,6 @@ def edit(video_id):
                 if tag:
                     video.tags.append(tag)
         
-        # Custom thumbnail
         if 'thumbnail' in request.files:
             thumb = request.files['thumbnail']
             if thumb.filename and allowed_file(thumb.filename, current_app.config['ALLOWED_IMAGE_EXTENSIONS']):
@@ -379,7 +378,6 @@ def delete(video_id):
     if video.user_id != current_user.id and not current_user.is_moderator:
         abort(403)
     
-    # Delete files
     try:
         if video.filename and not video.filename.startswith(('http://', 'https://')):
             filepath = os.path.join(current_app.config['VIDEO_FOLDER'], video.filename)
